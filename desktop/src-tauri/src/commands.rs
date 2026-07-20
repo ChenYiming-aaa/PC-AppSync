@@ -1,0 +1,30 @@
+use crate::scanner;
+use std::time::{SystemTime, UNIX_EPOCH};
+
+#[tauri::command]
+pub fn scan_standard() -> Result<scanner::ScanResult, String> {
+    let machine_name = std::env::var("COMPUTERNAME").unwrap_or_else(|_| "UNKNOWN".to_string());
+    let scan_time = SystemTime::now()
+        .duration_since(UNIX_EPOCH)
+        .map(|d| d.as_secs().to_string())
+        .unwrap_or_else(|_| String::new());
+
+    Ok(scanner::ScanResult {
+        version: "1.0".to_string(),
+        machine_name,
+        scan_time,
+        scan_mode: "standard".to_string(),
+        os: scanner::registry::get_os_info(),
+        applications: scanner::registry::get_installed_apps(),
+        runtimes: scanner::runtimes::detect_runtimes(),
+        deep_scan: None,
+    })
+}
+
+#[tauri::command]
+pub fn scan_deep() -> Result<scanner::ScanResult, String> {
+    let mut result = scan_standard()?;
+    result.scan_mode = "deep".to_string();
+    result.deep_scan = Some(scanner::deep_scan::run_deep_scan());
+    Ok(result)
+}
