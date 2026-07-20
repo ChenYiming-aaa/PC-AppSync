@@ -1,0 +1,370 @@
+[
+  {
+    "software_name": "Google Chrome",
+    "aliases": ["chrome", "google chrome"],
+    "official_url": "https://www.google.com/chrome/",
+    "direct_download_url": "https://dl.google.com/chrome/install/latest/chrome_installer.exe",
+    "category": "browser",
+    "verified": true
+  },
+  {
+    "software_name": "Mozilla Firefox",
+    "aliases": ["firefox", "ff", "mozilla firefox"],
+    "official_url": "https://www.mozilla.org/firefox/",
+    "direct_download_url": "https://download.mozilla.org/?product=firefox-latest&os=win&lang=zh-CN",
+    "category": "browser",
+    "verified": true
+  },
+  {
+    "software_name": "Microsoft Edge",
+    "aliases": ["edge", "msedge", "microsoft edge"],
+    "official_url": "https://www.microsoft.com/edge",
+    "direct_download_url": "https://c2rsetup.officeapps.live.com/c2r/downloadEdge.aspx?platform=Default&source=EdgeInsights&Channel=Stable&language=en",
+    "category": "browser",
+    "verified": true
+  },
+  {
+    "software_name": "Brave Browser",
+    "aliases": ["brave", "brave browser"],
+    "official_url": "https://brave.com/download/",
+    "direct_download_url": "",
+    "category": "browser",
+    "verified": true
+  },
+  {
+    "software_name": "Visual Studio Code",
+    "aliases": ["vscode", "vs code", "code", "visual studio code"],
+    "official_url": "https://code.visualstudio.com/",
+    "direct_download_url": "https://update.code.visualstudio.com/latest/win32-x64-user/stable",
+    "category": "development",
+    "verified": true
+  },
+  {
+    "software_name": "IntelliJ IDEA Community",
+    "aliases": ["intellij", "idea", "intellij idea community", "intellij idea"],
+    "official_url": "https://www.jetbrains.com/idea/download/",
+    "direct_download_url": "https://download.jetbrains.com/idea/ideaIC-2024.3.3.exe",
+    "category": "development",
+    "verified": true
+  },
+  {
+    "software_name": "Git",
+    "aliases": ["git", "git scm"],
+    "official_url": "https://git-scm.com/",
+    "direct_download_url": "https://github.com/git-for-windows/git/releases/latest/download/Git-2.48.1-64-bit.exe",
+    "category": "development",
+    "verified": true
+  },
+  {
+    "software_name": "Docker Desktop",
+    "aliases": ["docker", "docker desktop"],
+    "official_url": "https://www.docker.com/products/docker-desktop/",
+    "direct_download_url": "https://desktop.docker.com/win/stable/Docker%20Desktop%20Installer.exe",
+    "category": "development",
+    "verified": true
+  },
+  {
+    "software_name": "Postman",
+    "aliases": ["postman"],
+    "official_url": "https://www.postman.com/downloads/",
+    "direct_download_url": "https://dl.pstmn.io/download/latest/win64",
+    "category": "development",
+    "verified": true
+  },
+  {
+    "software_name": "Notepad++",
+    "aliases": ["notepad++", "notepad plus plus", "npp"],
+    "official_url": "https://notepad-plus-plus.org/downloads/",
+    "direct_download_url": "https://github.com/notepad-plus-plus/notepad-plus-plus/releases/latest/download/npp.8.7.5.Installer.exe",
+    "category": "development",
+    "verified": true
+  },
+  {
+    "software_name": "Windows Terminal",
+    "aliases": ["terminal", "windows terminal", "wt"],
+    "official_url": "https://github.com/microsoft/terminal",
+    "direct_download_url": "",
+    "category": "development",
+    "verified": true
+  },
+  {
+    "software_name": "Sublime Text",
+    "aliases": ["sublime", "sublime text"],
+    "official_url": "https://www.sublimetext.com/",
+    "direct_download_url": "https://download.sublimetext.com/sublime_text_build_4180_setup.exe",
+    "category": "development",
+    "verified": true
+  },
+  {
+    "software_name": "Python",
+    "aliases": ["python", "python3", "python 3"],
+    "official_url": "https://www.python.org/downloads/",
+    "direct_download_url": "https://www.python.org/ftp/python/3.13.2/python-3.13.2-amd64.exe",
+    "category": "runtime",
+    "verified": true
+  },
+  {
+    "software_name": "Node.js",
+    "aliases": ["node", "nodejs", "node.js"],
+    "official_url": "https://nodejs.org/",
+    "direct_download_url": "https://nodejs.org/dist/v22.14.0/node-v22.14.0-x64.msi",
+    "category": "runtime",
+    "verified": true
+  },
+  {
+    "software_name": "OpenJDK",
+    "aliases": ["java", "jdk", "openjdk", "java jdk"],
+    "official_url": "https://jdk.java.net/",
+    "direct_download_url": "",
+    "category": "runtime",
+    "verified": true
+  },
+  {
+    "software_name": "Go",
+    "aliases": ["go", "golang"],
+    "official_url": "https://go.dev/dl/",
+    "direct_download_url": "https://go.dev/dl/go1.24.0.windows-amd64.msi",
+    "category": "runtime",
+    "verified": true
+  },
+  {
+    "software_name": "DBeaver",
+    "aliases": ["dbeaver", "dbeaver ce"],
+    "official_url": "https://dbeaver.io/download/",
+    "direct_download_url": "https://dbeaver.io/files/dbeaver-ce-latest-x86_64-setup.exe",
+    "category": "database",
+    "verified": true
+  },
+  {
+    "software_name": "MySQL Workbench",
+    "aliases": ["mysql", "mysql workbench"],
+    "official_url": "https://www.mysql.com/products/workbench/",
+    "direct_download_url": "",
+    "category": "database",
+    "verified": true
+  },
+  {
+    "software_name": "PostgreSQL",
+    "aliases": ["postgres", "postgresql", "pg"],
+    "official_url": "https://www.postgresql.org/download/",
+    "direct_download_url": "https://get.enterprisedb.com/postgresql/postgresql-17.2-1-windows-x64.exe",
+    "category": "database",
+    "verified": true
+  },
+  {
+    "software_name": "HeidiSQL",
+    "aliases": ["heidisql"],
+    "official_url": "https://www.heidisql.com/",
+    "direct_download_url": "https://www.heidisql.com/installers/HeidiSQL_12.10.0.7000_Setup.exe",
+    "category": "database",
+    "verified": true
+  },
+  {
+    "software_name": "Figma",
+    "aliases": ["figma"],
+    "official_url": "https://www.figma.com/downloads/",
+    "direct_download_url": "",
+    "category": "design",
+    "verified": true
+  },
+  {
+    "software_name": "GIMP",
+    "aliases": ["gimp", "gnu image manipulation program"],
+    "official_url": "https://www.gimp.org/downloads/",
+    "direct_download_url": "https://download.gimp.org/gimp/v2.10/windows/gimp-2.10.38-setup.exe",
+    "category": "design",
+    "verified": true
+  },
+  {
+    "software_name": "Blender",
+    "aliases": ["blender"],
+    "official_url": "https://www.blender.org/download/",
+    "direct_download_url": "https://download.blender.org/release/Blender4.3/blender-4.3.2-windows-x64.msi",
+    "category": "design",
+    "verified": true
+  },
+  {
+    "software_name": "Inkscape",
+    "aliases": ["inkscape"],
+    "official_url": "https://inkscape.org/release/",
+    "direct_download_url": "https://inkscape.org/gallery/item/44610/inkscape-1.4_2024-10-11_x64.exe",
+    "category": "design",
+    "verified": true
+  },
+  {
+    "software_name": "Discord",
+    "aliases": ["discord"],
+    "official_url": "https://discord.com/download",
+    "direct_download_url": "https://discord.com/api/downloads/distributions/app/installers/latest?channel=stable&platform=win&arch=x64",
+    "category": "communication",
+    "verified": true
+  },
+  {
+    "software_name": "Slack",
+    "aliases": ["slack"],
+    "official_url": "https://slack.com/downloads/windows",
+    "direct_download_url": "https://slack.com/api/desktop.latestRelease?arch=win64&variant=msi",
+    "category": "communication",
+    "verified": true
+  },
+  {
+    "software_name": "Telegram",
+    "aliases": ["telegram", "tg", "telegram desktop"],
+    "official_url": "https://desktop.telegram.org/",
+    "direct_download_url": "https://telegram.org/dl/desktop/win64",
+    "category": "communication",
+    "verified": true
+  },
+  {
+    "software_name": "Zoom",
+    "aliases": ["zoom", "zoom client", "zoom meetings"],
+    "official_url": "https://zoom.us/download",
+    "direct_download_url": "https://zoom.us/client/latest/ZoomInstaller.exe",
+    "category": "communication",
+    "verified": true
+  },
+  {
+    "software_name": "VLC Media Player",
+    "aliases": ["vlc", "vlc media player"],
+    "official_url": "https://www.videolan.org/vlc/",
+    "direct_download_url": "https://get.videolan.org/vlc/3.0.21/win64/vlc-3.0.21-win64.exe",
+    "category": "media",
+    "verified": true
+  },
+  {
+    "software_name": "OBS Studio",
+    "aliases": ["obs", "obs studio"],
+    "official_url": "https://obsproject.com/download",
+    "direct_download_url": "https://cdn-fastly.obsproject.com/downloads/OBS-Studio-31.0.1-Full-Installer-x64.exe",
+    "category": "media",
+    "verified": true
+  },
+  {
+    "software_name": "Spotify",
+    "aliases": ["spotify"],
+    "official_url": "https://www.spotify.com/download/windows/",
+    "direct_download_url": "https://download.scdn.co/SpotifySetup.exe",
+    "category": "media",
+    "verified": true
+  },
+  {
+    "software_name": "PotPlayer",
+    "aliases": ["potplayer", "pot player"],
+    "official_url": "https://potplayer.daum.net/",
+    "direct_download_url": "",
+    "category": "media",
+    "verified": true
+  },
+  {
+    "software_name": "7-Zip",
+    "aliases": ["7zip", "7-zip", "seven zip"],
+    "official_url": "https://7-zip.org/",
+    "direct_download_url": "https://7-zip.org/a/7z2409-x64.exe",
+    "category": "utility",
+    "verified": true
+  },
+  {
+    "software_name": "Everything",
+    "aliases": ["everything", "voidtools"],
+    "official_url": "https://www.voidtools.com/",
+    "direct_download_url": "https://www.voidtools.com/Everything-1.4.1.1026.x64-Setup.exe",
+    "category": "utility",
+    "verified": true
+  },
+  {
+    "software_name": "PowerToys",
+    "aliases": ["powertoys", "microsoft powertoys"],
+    "official_url": "https://learn.microsoft.com/en-us/windows/powertoys/",
+    "direct_download_url": "https://github.com/microsoft/PowerToys/releases/latest/download/PowerToysSetup-0.88.0-x64.exe",
+    "category": "utility",
+    "verified": true
+  },
+  {
+    "software_name": "AutoHotkey",
+    "aliases": ["autohotkey", "ahk"],
+    "official_url": "https://www.autohotkey.com/",
+    "direct_download_url": "https://github.com/Lexikos/AutoHotkey_L/releases/latest/download/AutoHotkey_2.0.19_setup.exe",
+    "category": "utility",
+    "verified": true
+  },
+  {
+    "software_name": "ShareX",
+    "aliases": ["sharex"],
+    "official_url": "https://getsharex.com/",
+    "direct_download_url": "https://github.com/ShareX/ShareX/releases/latest/download/ShareX-16.1.0-setup.exe",
+    "category": "utility",
+    "verified": true
+  },
+  {
+    "software_name": "WPS Office",
+    "aliases": ["wps", "wps office"],
+    "official_url": "https://www.wps.com/office-free/",
+    "direct_download_url": "",
+    "category": "office",
+    "verified": true
+  },
+  {
+    "software_name": "LibreOffice",
+    "aliases": ["libreoffice", "libre office"],
+    "official_url": "https://www.libreoffice.org/download/download-libreoffice/",
+    "direct_download_url": "https://download.documentfoundation.org/libreoffice/stable/24.8.4/win/x86_64/LibreOffice_24.8.4_Win_x86-64.msi",
+    "category": "office",
+    "verified": true
+  },
+  {
+    "software_name": "Microsoft Office",
+    "aliases": ["office", "microsoft office", "ms office"],
+    "official_url": "https://www.microsoft.com/en-us/microsoft-365",
+    "direct_download_url": "",
+    "category": "office",
+    "verified": true
+  },
+  {
+    "software_name": "Bitdefender",
+    "aliases": ["bitdefender"],
+    "official_url": "https://www.bitdefender.com/consumer/download/",
+    "direct_download_url": "",
+    "category": "security",
+    "verified": true
+  },
+  {
+    "software_name": "Malwarebytes",
+    "aliases": ["malwarebytes"],
+    "official_url": "https://www.malwarebytes.com/",
+    "direct_download_url": "https://downloads.malwarebytes.com/file/mb5_offline",
+    "category": "security",
+    "verified": true
+  },
+  {
+    "software_name": "Kaspersky",
+    "aliases": ["kaspersky", "kaspersky antivirus"],
+    "official_url": "https://www.kaspersky.com/downloads",
+    "direct_download_url": "",
+    "category": "security",
+    "verified": true
+  },
+  {
+    "software_name": "NVIDIA GeForce Experience",
+    "aliases": ["geforce", "nvidia", "geforce experience"],
+    "official_url": "https://www.nvidia.com/en-us/geforce/geforce-experience/",
+    "direct_download_url": "",
+    "category": "utility",
+    "verified": true
+  },
+  {
+    "software_name": "CPU-Z",
+    "aliases": ["cpuz", "cpu-z"],
+    "official_url": "https://www.cpuid.com/softwares/cpu-z.html",
+    "direct_download_url": "https://download.cpuid.com/cpu-z/cpu-z_2_13-en.exe",
+    "category": "utility",
+    "verified": true
+  },
+  {
+    "software_name": "uTorrent",
+    "aliases": ["utorrent", "µtorrent"],
+    "official_url": "https://www.utorrent.com/",
+    "direct_download_url": "",
+    "category": "utility",
+    "verified": true
+  }
+]
