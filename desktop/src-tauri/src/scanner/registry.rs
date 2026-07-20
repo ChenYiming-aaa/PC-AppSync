@@ -47,7 +47,15 @@ pub fn get_installed_apps() -> Vec<Application> {
             }
         }
     }
-    dedup_apps(apps)
+    // Merge package manager results
+    let mut all_apps = apps;
+    let more = super::package_managers::get_winget_apps();
+    let more2 = super::package_managers::get_choco_apps();
+    let more3 = super::package_managers::get_scoop_apps();
+    all_apps.extend(more);
+    all_apps.extend(more2);
+    all_apps.extend(more3);
+    dedup_apps(all_apps)
 }
 
 fn dedup_apps(apps: Vec<Application>) -> Vec<Application> {
