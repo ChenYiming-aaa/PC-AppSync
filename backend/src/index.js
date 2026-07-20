@@ -2,11 +2,14 @@ const express = require('express');
 const cors = require('cors');
 const config = require('./config');
 const db = require('./db');
+const authRoutes = require('./routes/auth');
 
 const app = express();
 
 app.use(cors());
 app.use(express.json({ limit: '10mb' }));
+
+app.use('/api/v1/auth', authRoutes);
 
 app.get('/api/v1/health', async (req, res) => {
   try {
