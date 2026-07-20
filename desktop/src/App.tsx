@@ -1,51 +1,63 @@
-import { useState } from "react";
-import reactLogo from "./assets/react.svg";
-import { invoke } from "@tauri-apps/api/core";
-import "./App.css";
+import { useState, useEffect } from 'react';
+import { Layout } from './components/Layout';
+import { LoginForm } from './components/LoginForm';
+import { Dashboard } from './pages/Dashboard';
+import { Inventory } from './pages/Inventory';
+import { Downloads } from './pages/Downloads';
+import { api } from './api/client';
+import type { ScanResult, User } from './types';
 
-function App() {
-  const [greetMsg, setGreetMsg] = useState("");
-  const [name, setName] = useState("");
+export default function App() {
+  const [user, setUser] = useState<User | null>(null);
+  const [page, setPage] = useState('dashboard');
+  const [scanResult, setScanResult] = useState<ScanResult | null>(null);
 
-  async function greet() {
-    // Learn more about Tauri commands at https://tauri.app/develop/calling-rust/
-    setGreetMsg(await invoke("greet", { name }));
+  useEffect(() => {
+    const token = localStorage.getItem('appsync_token');
+    if (token) {
+      api.getProfile().then(setUser).catch(() => {
+        localStorage.removeItem('appsync_token');
+      });
+    }
+  }, []);
+
+  const handleLogin = () => {
+    const token = localStorage.getItem('appsync_token');
+    if (token) {
+      api.getProfile().then(setUser);
+    }
+  };
+
+  const handleLogout = () => {
+    api.logout();
+    setUser(null);
+  };
+
+  const handleScanComplete = async (result: ScanResult) => {
+    setScanResult(result);
+    try {
+      await api.uploadInventory(result);
+      alert('Scan result uploaded to cloud!');
+    } catch {
+      alert('Scan complete but upload failed. Check your connection.');
+    }
+  };
+
+  if (!user) {
+    return <LoginForm onLogin={handleLogin} />;
   }
 
   return (
-    <main className="container">
-      <h1>Welcome to Tauri + React</h1>
-
-      <div className="row">
-        <a href="https://vite.dev" target="_blank">
-          <img src="/vite.svg" className="logo vite" alt="Vite logo" />
-        </a>
-        <a href="https://tauri.app" target="_blank">
-          <img src="/tauri.svg" className="logo tauri" alt="Tauri logo" />
-        </a>
-        <a href="https://react.dev" target="_blank">
-          <img src={reactLogo} className="logo react" alt="React logo" />
-        </a>
-      </div>
-      <p>Click on the Tauri, Vite, and React logos to learn more.</p>
-
-      <form
-        className="row"
-        onSubmit={(e) => {
-          e.preventDefault();
-          greet();
-        }}
-      >
-        <input
-          id="greet-input"
-          onChange={(e) => setName(e.currentTarget.value)}
-          placeholder="Enter a name..."
-        />
-        <button type="submit">Greet</button>
-      </form>
-      <p>{greetMsg}</p>
-    </main>
+    <Layout currentPage={page} onNavigate={setPage} userEmail={user.email} onLogout={handleLogout}>
+      {page === 'dashboard' && (
+        <Dashboard lastScan={scanResult} onScanComplete={handleScanComplete} />
+      )}
+      {page === 'inventory' && (
+        <Inventory scanResult={scanResult} onSearchDownload={(name) => {
+          window.open('https://www.google.com/search?q=' + encodeURIComponent(name + ' official download'), '_blank');
+        }} />
+      )}
+      {page === 'downloads' && <Downloads scanResult={scanResult} />}
+    </Layout>
   );
 }
-
-export default App;
