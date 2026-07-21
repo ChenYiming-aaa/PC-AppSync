@@ -3,6 +3,7 @@ import type { ScanResult, DownloadLink } from '../types';
 import { AppCard } from '../components/AppCard';
 import { api } from '../api/client';
 import { openUrl } from '../api/scanner';
+import { categorizeApp, CATEGORIES } from '../utils/categorize';
 
 interface Props {
   scanResult: ScanResult | null;
@@ -12,6 +13,7 @@ export function Downloads({ scanResult }: Props) {
   const [links, setLinks] = useState<Record<string, DownloadLink>>({});
   const [filter, setFilter] = useState<'all' | 'matched' | 'unmatched'>('all');
   const [search, setSearch] = useState('');
+  const [categoryFilter, setCategoryFilter] = useState('全部');
 
   useEffect(() => {
     if (!scanResult) return;
@@ -36,11 +38,18 @@ export function Downloads({ scanResult }: Props) {
     return scanResult.applications
       .filter(app => app.name.toLowerCase().includes(search.toLowerCase()))
       .filter(app => {
+        if (categoryFilter !== '全部') {
+          const cat = categorizeApp(app.name);
+          if (cat.category !== categoryFilter) return false;
+        }
+        return true;
+      })
+      .filter(app => {
         if (filter === 'matched') return !!links[app.name];
         if (filter === 'unmatched') return !links[app.name];
         return true;
       });
-  }, [scanResult, links, filter, search]);
+  }, [scanResult, links, filter, search, categoryFilter]);
 
   const matched = filtered.filter(app => !!links[app.name]);
   const unmatched = filtered.filter(app => !links[app.name]);
@@ -60,9 +69,15 @@ export function Downloads({ scanResult }: Props) {
     <div>
       <h2>Downloads</h2>
       <div style={{ display: 'flex', gap: 8, marginBottom: 14 }}>
-        <input type="text" placeholder="Search software..." value={search}
+        <input type="text" placeholder="Search by name..." value={search}
           onChange={e => setSearch(e.target.value)}
           style={{ flex: 1, padding: '8px 12px', borderRadius: 6, border: '1px solid #ccc' }} />
+        <select value={categoryFilter} onChange={e => setCategoryFilter(e.target.value)}
+          style={{ padding: '8px 12px', borderRadius: 6, border: '1px solid #ccc' }}>
+          <option value="全部">All Types</option>
+          {CATEGORIES.map(c => <option key={c.name} value={c.name}>{c.icon} {c.name}</option>)}
+          <option value="其他">📦 Other</option>
+        </select>
       </div>
       <div style={{ display: 'flex', gap: 6, marginBottom: 14 }}>
         {(['all', 'matched', 'unmatched'] as const).map(f => (

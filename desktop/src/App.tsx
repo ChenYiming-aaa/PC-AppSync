@@ -5,6 +5,7 @@ import { Dashboard } from './pages/Dashboard';
 import { Inventory } from './pages/Inventory';
 import { Downloads } from './pages/Downloads';
 import { api } from './api/client';
+import { openUrl } from './api/scanner';
 import type { ScanResult, User } from './types';
 
 export default function App() {
@@ -15,7 +16,10 @@ export default function App() {
   useEffect(() => {
     const token = localStorage.getItem('appsync_token');
     if (token) {
-      api.getProfile().then(setUser).catch(() => {
+      api.getProfile().then(user => {
+        setUser(user);
+        return api.getLatestInventory();
+      }).then(r => setScanResult(r.scan_data)).catch(() => {
         localStorage.removeItem('appsync_token');
       });
     }
@@ -25,6 +29,7 @@ export default function App() {
     const token = localStorage.getItem('appsync_token');
     if (token) {
       api.getProfile().then(setUser);
+      api.getLatestInventory().then(r => setScanResult(r.scan_data)).catch(() => {});
     }
   };
 
@@ -38,8 +43,8 @@ export default function App() {
     try {
       await api.uploadInventory(result);
       alert('Scan result uploaded to cloud!');
-    } catch {
-      alert('Scan complete but upload failed. Check your connection.');
+    } catch (err: any) {
+      alert('Upload failed: ' + (err?.message || 'Unknown error'));
     }
   };
 
@@ -54,7 +59,7 @@ export default function App() {
       )}
       {page === 'inventory' && (
         <Inventory scanResult={scanResult} onSearchDownload={(name) => {
-          window.open('https://www.google.com/search?q=' + encodeURIComponent(name + ' official download'), '_blank');
+          openUrl('https://www.bing.com/search?q=' + encodeURIComponent(name + ' 官方下载'));
         }} />
       )}
       {page === 'downloads' && <Downloads scanResult={scanResult} />}

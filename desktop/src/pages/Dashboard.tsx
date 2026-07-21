@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import type { ScanResult } from '../types';
 import { ScanButton } from '../components/ScanButton';
 import { api } from '../api/client';
+import { exportScan, getScanExportData } from '../api/scanner';
 
 interface Props {
   lastScan: ScanResult | null;
@@ -26,9 +27,25 @@ export function Dashboard({ lastScan, onScanComplete }: Props) {
 
   const unmatched = appCount - matchCount;
 
+  const handleExport = async () => {
+    if (!lastScan) return;
+    const { json } = getScanExportData(lastScan);
+    const filePath = prompt('Save to (full path, e.g. C:\\scan.json):');
+    if (!filePath) return;
+    try {
+      await exportScan(json, filePath);
+      alert('Exported to ' + filePath);
+    } catch (err: any) {
+      alert('Export failed: ' + (err?.message || ''));
+    }
+  };
+
   return (
     <div>
-      <h2>Overview</h2>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+        <h2>Overview</h2>
+        {lastScan && <button onClick={handleExport} style={{ fontSize: 12 }}>Export</button>}
+      </div>
       {lastScan ? (
         <>
           <div style={{ display: 'flex', gap: 12, marginBottom: 20 }}>
