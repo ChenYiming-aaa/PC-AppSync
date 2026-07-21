@@ -25,44 +25,6 @@ pub fn scan_deep() -> Result<scanner::ScanResult, String> {
     result.deep_scan = Some(scanner::deep_scan::run_deep_scan());
     Ok(result)
 }
-use std::collections::HashMap;
-
-/// Extract icon for ONE app. Simple PowerShell per call, but fast enough (<1s each).
-#[tauri::command]
-pub fn extract_one_icon(display_icon: String, install_dir: String) -> Result<Option<String>, String> {
-    let script = format!(
-        r#"Add-Type -AssemblyName System.Drawing
-$candidates = @()
-$di = '{0}'
-if ($di) {{ $candidates += ($di -replace ',.*$','') }}
-$idir = '{1}'
-if ($idir -and (Test-Path $idir)) {{ Get-ChildItem $idir -Filter *.exe -ErrorAction SilentlyContinue | ForEach-Object {{ $candidates += $_.FullName }} }}
-$result = ''
-foreach ($p in $candidates) {{
-    if (-not (Test-Path $p)) {{ continue }}
-    try {{
-        $ico = [System.Drawing.Icon]::ExtractAssociatedIcon($p)
-        if (-not $ico) {{ continue }}
-        $b = New-Object System.Drawing.Bitmap 32,32
-        $g = [System.Drawing.Graphics]::FromImage($b)
-        $g.DrawIcon($ico,0,0); $g.Dispose()
-        $m = New-Object System.IO.MemoryStream
-        $b.Save($m, [System.Drawing.Imaging.ImageFormat]::Png)
-        $result = [Convert]::ToBase64String($m.ToArray())
-        $b.Dispose()
-        break
-    }} catch {{ }}
-}}
-Write-Host -NoNewline $result"#,
-        display_icon.replace('\'', "''"), install_dir.replace('\'', "''")
-    );
-    let out = std::process::Command::new("powershell")
-        .args(["-NoProfile", "-NonInteractive", "-Command", &script])
-        .output().map_err(|e| e.to_string())?;
-    let b64 = String::from_utf8_lossy(&out.stdout).trim().to_string();
-    if b64.is_empty() { Ok(None) } else { Ok(Some(format!("data:image/png;base64,{}", b64))) }
-}
-
 #[derive(serde::Serialize, serde::Deserialize)]
 pub struct IconEntry {
     pub name: String,

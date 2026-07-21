@@ -1,6 +1,7 @@
-import { useState, useEffect, memo, useRef } from 'react';
-import { openUrl, fetchAppIcon } from '../api/scanner';
+import { useState, memo } from 'react';
+import { openUrl } from '../api/scanner';
 import { categorizeApp } from '../utils/categorize';
+import { fetchAppIcon } from '../api/scanner';
 
 interface Props {
   name: string;
@@ -9,23 +10,13 @@ interface Props {
   downloadUrl?: string;
   matched?: boolean;
   onSearch?: () => void;
-  icon_path?: string;
-  install_path?: string;
 }
 
-export const AppCard = memo(function AppCard({ name, version, source, downloadUrl, matched, onSearch, icon_path, install_path }: Props) {
+export const AppCard = memo(function AppCard({ name, version, source, downloadUrl, matched, onSearch }: Props) {
   const { icon: fallbackIcon, category } = categorizeApp(name);
-  const [iconSrc, setIconSrc] = useState<string | null>(null);
+  const cdnUrl = fetchAppIcon({ name });
   const [imgError, setImgError] = useState(false);
-  const loaded = useRef(false);
-
-  useEffect(() => {
-    if (loaded.current) return;
-    loaded.current = true;
-    fetchAppIcon({ name, icon_path, install_path }).then(setIconSrc);
-  }, [name, icon_path, install_path]);
-
-  const showImg = iconSrc && !imgError;
+  const showImg = cdnUrl && !imgError;
 
   return (
     <div style={{
@@ -34,7 +25,7 @@ export const AppCard = memo(function AppCard({ name, version, source, downloadUr
     }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: 10, flex: 1 }}>
         {showImg ? (
-          <img src={iconSrc!} alt="" style={{ width: 22, height: 22, borderRadius: 3 }}
+          <img src={cdnUrl!} alt="" style={{ width: 22, height: 22, borderRadius: 3 }}
             onError={() => setImgError(true)} />
         ) : (
           <span style={{ fontSize: 18 }}>{fallbackIcon}</span>

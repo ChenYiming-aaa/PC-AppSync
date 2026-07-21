@@ -111,7 +111,6 @@ export function Inventory({ scanResult, onSearchDownload }: Props) {
                       {subOpen && grp.apps.map((app, idx) => (
                         <div key={idx} style={{ paddingLeft: 12 }}>
                           <AppCard name={app.name} version={app.version} source={app.source}
-                            icon_path={app.icon_path} install_path={app.install_path}
                             onSearch={() => onSearchDownload(app.name)} />
                         </div>
                       ))}
@@ -120,7 +119,6 @@ export function Inventory({ scanResult, onSearchDownload }: Props) {
                 })}
                 {standalone.map((app, idx) => (
                   <AppCard key={'s' + idx} name={app.name} version={app.version} source={app.source}
-                    icon_path={app.icon_path} install_path={app.install_path}
                     onSearch={() => onSearchDownload(app.name)} />
                 ))}
               </div>
