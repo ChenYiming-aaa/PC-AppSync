@@ -63,12 +63,20 @@ export function queueIconLoad(app: { icon_path?: string; name: string; install_p
   });
 }
 
-async function processNext() {
-  if (queue.length === 0) { busy = false; return; }
-  busy = true;
-  const item = queue.shift()!;
+let activeWorkers = 0;
+const MAX_WORKERS = 3;
 
-  await new Promise(r => setTimeout(r, 80));
+async function processNext() {
+  while (queue.length > 0 && activeWorkers < MAX_WORKERS) {
+    activeWorkers++;
+    const item = queue.shift()!;
+    processItem(item);
+  }
+  if (queue.length === 0 && activeWorkers === 0) busy = false;
+}
+
+async function processItem(item: typeof queue[0]) {
+  await new Promise(r => setTimeout(r, 30));
 
   try {
     const b64 = await invoke<string | null>('get_app_icon', {
@@ -83,6 +91,7 @@ async function processNext() {
     item.resolve(null);
   }
   completedCount++;
+  activeWorkers--;
   notifyProgress();
   processNext();
 }
