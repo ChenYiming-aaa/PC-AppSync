@@ -19,15 +19,19 @@ export function Inventory({ scanResult: initialScan, onSearchDownload }: Props) 
   const [collapsed, setCollapsed] = useState<string[]>([]);
   const [subCollapsed, setSubCollapsed] = useState<string[]>([]);
 
-  // Fetch download links for all apps
+  // Fetch download links (batched with delay)
   useEffect(() => {
     if (!scanResult) return;
     const names = [...new Set(scanResult.applications.map(a => a.name))];
-    names.forEach(name => {
-      api.searchDownloadLinks(name).then(results => {
-        if (results.length > 0) setLinks(prev => ({ ...prev, [name]: results[0] }));
-      });
-    });
+    let i = 0;
+    const timer = setInterval(() => {
+      if (i >= names.length) { clearInterval(timer); return; }
+      api.searchDownloadLinks(names[i]).then(results => {
+        if (results.length > 0) setLinks(prev => ({ ...prev, [names[i]]: results[0] }));
+      }).catch(() => {});
+      i++;
+    }, 100);
+    return () => clearInterval(timer);
   }, [scanResult]);
 
   const toggle = (key: string) => setCollapsed(prev => prev.includes(key) ? prev.filter(c => c !== key) : [...prev, key]);
