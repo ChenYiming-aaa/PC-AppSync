@@ -85,4 +85,45 @@ router.get('/profile', authMiddleware, async (req, res) => {
   }
 });
 
+// Admin: list all users
+router.get('/users', authMiddleware, async (req, res) => {
+  if (!req.isAdmin) return res.status(403).json({ error: 'Admin only' });
+  try {
+    const result = await db.query(
+      'SELECT u.id, u.email, u.nickname, u.is_admin, u.created_at, (SELECT COUNT(*) FROM inventories i WHERE i.user_id = u.id) as inventory_count FROM users u ORDER BY u.created_at DESC'
+    );
+    res.json(result.rows);
+  } catch (err) {
+    console.error('List users error:', err);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+// Admin: toggle admin status
+router.put('/users/:id/admin', authMiddleware, async (req, res) => {
+  if (!req.isAdmin) return res.status(403).json({ error: 'Admin only' });
+  try {
+    const { is_admin } = req.body;
+    const result = await db.query('UPDATE users SET is_admin = $1 WHERE id = $2 RETURNING id, email, nickname, is_admin', [is_admin === true, req.params.id]);
+    if (result.rows.length === 0) return res.status(404).json({ error: 'User not found' });
+    res.json(result.rows[0]);
+  } catch (err) {
+    console.error('Toggle admin error:', err);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+// Admin: delete user
+router.delete('/users/:id', authMiddleware, async (req, res) => {
+  if (!req.isAdmin) return res.status(403).json({ error: 'Admin only' });
+  try {
+    const result = await db.query('DELETE FROM users WHERE id = $1 RETURNING id', [req.params.id]);
+    if (result.rows.length === 0) return res.status(404).json({ error: 'User not found' });
+    res.json({ deleted: true });
+  } catch (err) {
+    console.error('Delete user error:', err);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
 module.exports = router;
