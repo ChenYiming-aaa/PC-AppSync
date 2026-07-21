@@ -53,6 +53,72 @@ router.get('/latest', async (req, res) => {
   }
 });
 
+// Compare: find apps in another inventory that are NOT in the current machine's
+// GET /api/v1/inventories/compare?other_id=xxx
+router.get('/compare', async (req, res) => {
+  try {
+    const otherId = parseInt(req.query.other_id, 10);
+    if (!otherId) {
+      return res.status(400).json({ error: 'other_id query param required' });
+    }
+
+    // Get current user's latest inventory
+    const currentResult = await db.query(
+      "SELECT id, machine_name, scan_data FROM inventories WHERE user_id = $1 ORDER BY scan_time DESC LIMIT 1",
+      [req.userId]
+    );
+
+    // Get the other inventory (must belong to same user)
+    const otherResult = await db.query(
+      "SELECT id, machine_name, scan_data FROM inventories WHERE id = $1 AND user_id = $2",
+      [otherId, req.userId]
+    );
+
+    if (otherResult.rows.length === 0) {
+      return res.status(404).json({ error: 'Other inventory not found' });
+    }
+
+    const current = currentResult.rows[0];
+    const other = otherResult.rows[0];
+    const currentScan = current ? current.scan_data : { applications: [], runtimes: [] };
+    const otherScan = other.scan_data;
+
+    // Build name sets for comparison (case-insensitive)
+    const currentAppNames = new Set(
+      (currentScan.applications || []).map((a) => a.name.toLowerCase())
+    );
+    const currentRuntimeNames = new Set(
+      (currentScan.runtimes || []).map((r) => r.name.toLowerCase())
+    );
+
+    // Apps on old machine but NOT on current machine
+    const missingApps = (otherScan.applications || []).filter(
+      (a) => !currentAppNames.has(a.name.toLowerCase())
+    );
+    // Runtimes on old machine but NOT on current machine
+    const missingRuntimes = (otherScan.runtimes || []).filter(
+      (r) => !currentRuntimeNames.has(r.name.toLowerCase())
+    );
+    // Apps present on both
+    const commonApps = (otherScan.applications || []).filter((a) =>
+      currentAppNames.has(a.name.toLowerCase())
+    );
+
+    res.json({
+      current_machine: current ? current.machine_name : null,
+      other_machine: other.machine_name,
+      other_inventory_id: other.id,
+      missing_apps: missingApps,
+      missing_runtimes: missingRuntimes,
+      common_count: commonApps.length,
+      missing_count: missingApps.length,
+    });
+  } catch (err) {
+    console.error('Compare error:', err);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
 router.get('/:id', async (req, res) => {
   try {
     const result = await db.query(

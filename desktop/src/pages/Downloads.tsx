@@ -1,7 +1,6 @@
 import { useState, useEffect, useMemo } from 'react';
-import type { ScanResult, DownloadLink } from '../types';
+import type { ScanResult, DownloadLink, Application } from '../types';
 import { AppCard } from '../components/AppCard';
-import { IconLoadProgress } from '../components/IconLoadProgress';
 import { api } from '../api/client';
 import { openUrl } from '../api/scanner';
 import { categorizeApp, CATEGORIES } from '../utils/categorize';
@@ -15,9 +14,45 @@ export function Downloads({ scanResult }: Props) {
   const [filter, setFilter] = useState<'all' | 'matched' | 'unmatched'>('all');
   const [search, setSearch] = useState('');
   const [categoryFilter, setCategoryFilter] = useState('全部');
+  const [inventories, setInventories] = useState<{ id: number; machine_name: string; scan_time: string }[]>([]);
+  const [selectedOtherId, setSelectedOtherId] = useState<number | null>(null);
+  const [missingApps, setMissingApps] = useState<Application[] | null>(null);
+  const [diffMachine, setDiffMachine] = useState<string | null>(null);
+
+  // Fetch available inventories for comparison
+  useEffect(() => {
+    api.listInventories().then(list => {
+      const sorted = list.sort((a, b) => new Date(b.scan_time).getTime() - new Date(a.scan_time).getTime());
+      setInventories(sorted);
+      if (sorted.length > 1 && !selectedOtherId) {
+        // Select the most recent different machine
+        const currentMachine = scanResult?.machine_name;
+        const other = sorted.find(i => i.machine_name !== currentMachine) || sorted[1];
+        if (other) setSelectedOtherId(other.id);
+      }
+    }).catch(() => {});
+  }, [scanResult]);
+
+  // Fetch comparison when selected other inventory changes
+  useEffect(() => {
+    if (!selectedOtherId) { setMissingApps(null); return; }
+    api.compareInventories(selectedOtherId).then(data => {
+      setMissingApps(data.missing_apps);
+      setDiffMachine(data.other_machine);
+      // Also fetch download links for the missing apps
+      data.missing_apps.forEach(app => {
+        api.searchDownloadLinks(app.name).then(results => {
+          if (results.length > 0) {
+            setLinks(prev => ({ ...prev, [app.name]: results[0] }));
+          }
+        });
+      });
+    }).catch(() => setMissingApps(null));
+  }, [selectedOtherId]);
+
+  // Fetch download links for current machine's apps
   useEffect(() => {
     if (!scanResult) return;
-    setLinks({});
     scanResult.applications.forEach(app => {
       api.searchDownloadLinks(app.name).then(results => {
         if (results.length > 0) {
@@ -27,15 +62,16 @@ export function Downloads({ scanResult }: Props) {
     });
   }, [scanResult]);
 
+  const displayApps = missingApps || scanResult?.applications || [];
+
   const matchCount = useMemo(
-    () => scanResult?.applications.filter(a => !!links[a.name]).length ?? 0,
-    [scanResult, links]
+    () => displayApps.filter(a => !!links[a.name]).length ?? 0,
+    [displayApps, links]
   );
-  const total = scanResult?.applications.length ?? 0;
+  const total = displayApps.length;
 
   const filtered = useMemo(() => {
-    if (!scanResult) return [];
-    return scanResult.applications
+    return displayApps
       .filter(app => app.name.toLowerCase().includes(search.toLowerCase()))
       .filter(app => {
         if (categoryFilter !== '全部') {
@@ -49,7 +85,7 @@ export function Downloads({ scanResult }: Props) {
         if (filter === 'unmatched') return !links[app.name];
         return true;
       });
-  }, [scanResult, links, filter, search, categoryFilter]);
+  }, [displayApps, links, filter, search, categoryFilter]);
 
   const matched = filtered.filter(app => !!links[app.name]);
   const unmatched = filtered.filter(app => !links[app.name]);
@@ -63,11 +99,41 @@ export function Downloads({ scanResult }: Props) {
     }
   };
 
-  if (!scanResult) return <p>No scan data. Run a scan first.</p>;
-
   return (
     <div>
       <h2>Downloads</h2>
+
+      {/* Cross-device comparison selector */}
+      {inventories.length > 1 && (
+        <div style={{ marginBottom: 14, padding: 10, background: '#f8f9ff', borderRadius: 8, border: '1px solid #d0d7ff' }}>
+          <label style={{ fontSize: 13, fontWeight: 'bold' }}>Compare with old machine:</label>
+          <select value={selectedOtherId || ''} onChange={e => setSelectedOtherId(parseInt(e.target.value) || null)}
+            style={{ marginLeft: 8, padding: '4px 8px' }}>
+            {inventories.filter(i => i.id !== inventories[0]?.id).map(i => (
+              <option key={i.id} value={i.id}>{i.machine_name} ({new Date(i.scan_time).toLocaleDateString()})</option>
+            ))}
+          </select>
+          {missingApps !== null && (
+            <span style={{ marginLeft: 12, fontSize: 13, color: '#c62828' }}>
+              {missingApps.length} apps missing on this machine
+              {diffMachine && <span style={{ color: '#666' }}> from {diffMachine}</span>}
+            </span>
+          )}
+          {missingApps === null && selectedOtherId && (
+            <span style={{ marginLeft: 12, fontSize: 13, color: '#999' }}>Loading comparison...</span>
+          )}
+        </div>
+      )}
+
+      {missingApps && (
+        <div style={{ display: 'flex', gap: 6, marginBottom: 10 }}>
+          <button onClick={() => { setMissingApps(null); setSelectedOtherId(null); }}
+            style={{ padding: '4px 12px', cursor: 'pointer', fontSize: 12 }}>
+            Show all current apps
+          </button>
+        </div>
+      )}
+
       <div style={{ display: 'flex', gap: 8, marginBottom: 14 }}>
         <input type="text" placeholder="Search by name..." value={search}
           onChange={e => setSearch(e.target.value)}
@@ -75,11 +141,11 @@ export function Downloads({ scanResult }: Props) {
         <select value={categoryFilter} onChange={e => setCategoryFilter(e.target.value)}
           style={{ padding: '8px 12px', borderRadius: 6, border: '1px solid #ccc' }}>
           <option value="全部">All Types</option>
-          {CATEGORIES.map(c => <option key={c.name} value={c.name}>{c.icon} {c.name}</option>)}
+          {CATEGORIES.filter(c => !c.system).map(c => <option key={c.name} value={c.name}>{c.icon} {c.name}</option>)}
           <option value="其他">📦 Other</option>
         </select>
       </div>
-      <IconLoadProgress />
+
       <div style={{ display: 'flex', gap: 6, marginBottom: 14 }}>
         {(['all', 'matched', 'unmatched'] as const).map(f => (
           <button key={f} onClick={() => setFilter(f)}
@@ -93,6 +159,8 @@ export function Downloads({ scanResult }: Props) {
           </button>
         ))}
       </div>
+
+      {missingApps && <p style={{ color: '#c62828', fontSize: 13 }}>These apps are on your old machine but not on this one:</p>}
 
       {matched.length > 0 && (
         <>

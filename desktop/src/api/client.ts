@@ -1,4 +1,4 @@
-import type { DownloadLink, ScanResult, User } from '../types';
+import type { DownloadLink, ScanResult, User, CompareResult } from '../types';
 
 const API_BASE = 'http://localhost:3000/api/v1';
 
@@ -61,6 +61,9 @@ export const api = {
   getLatestInventory: () => request<{ id: number; scan_data: ScanResult }>('/inventories/latest'),
 
   listInventories: () => request<Array<{ id: number; machine_name: string; scan_time: string }>>('/inventories'),
+
+  compareInventories: (otherId: number) =>
+    request<CompareResult>('/inventories/compare?other_id=' + otherId),
 
   searchDownloadLinks: (q: string) =>
     request<DownloadLink[]>('/downloads/search?q=' + encodeURIComponent(q)),

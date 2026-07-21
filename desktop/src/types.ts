@@ -28,6 +28,16 @@ export interface Runtime {
   packages: Package[];
 }
 
+export interface CompareResult {
+  current_machine: string | null;
+  other_machine: string;
+  other_inventory_id: number;
+  missing_apps: Application[];
+  missing_runtimes: Runtime[];
+  common_count: number;
+  missing_count: number;
+}
+
 export interface DeepScan {
   vscode_extensions: Package[];
   path_entries: string[];
