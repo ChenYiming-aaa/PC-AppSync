@@ -70,9 +70,20 @@ fn find_app_exe(app_name: &str, known_paths: &[String]) -> Option<String> {
             }
         }
     }
-    // 3. Search common install dirs by app name keywords
+    // 3. Search all drives for matching install dirs
     let search_terms = lower.split(|c: char| !c.is_alphanumeric()).filter(|s| s.len() > 2).collect::<Vec<_>>();
-    let common_roots = ["C:\\Program Files", "C:\\Program Files (x86)", &std::env::var("LOCALAPPDATA").unwrap_or_default()];
+    let mut common_roots = vec!["C:\\Program Files".to_string(), "C:\\Program Files (x86)".to_string()];
+    if let Ok(local) = std::env::var("LOCALAPPDATA") {
+        if !local.is_empty() { common_roots.push(local); }
+    }
+    // Add all available drives (D:, E:, etc.)
+    for drive_letter in 'D'..='Z' {
+        let drive = format!("{}:\\", drive_letter);
+        if std::path::Path::new(&drive).exists() {
+            common_roots.push(format!("{}\\Program Files", drive));
+            common_roots.push(format!("{}\\Program Files (x86)", drive));
+        }
+    }
     for root in &common_roots {
         if let Ok(entries) = std::fs::read_dir(root) {
             for entry in entries.flatten() {
