@@ -102,8 +102,17 @@ router.get('/users', authMiddleware, async (req, res) => {
 // Admin: toggle admin status
 router.put('/users/:id/admin', authMiddleware, async (req, res) => {
   if (!req.isAdmin) return res.status(403).json({ error: 'Admin only' });
+  if (parseInt(req.params.id) === req.userId) return res.status(400).json({ error: 'Cannot change your own admin status' });
   try {
     const { is_admin } = req.body;
+    if (is_admin === false) {
+      const adminCount = await db.query('SELECT COUNT(*) FROM users WHERE is_admin = true');
+      const target = await db.query('SELECT is_admin FROM users WHERE id = $1', [req.params.id]);
+      if (target.rows.length === 0) return res.status(404).json({ error: 'User not found' });
+      if (target.rows[0].is_admin && parseInt(adminCount.rows[0].count) <= 1) {
+        return res.status(400).json({ error: 'Cannot demote the last admin' });
+      }
+    }
     const result = await db.query('UPDATE users SET is_admin = $1 WHERE id = $2 RETURNING id, email, nickname, is_admin', [is_admin === true, req.params.id]);
     if (result.rows.length === 0) return res.status(404).json({ error: 'User not found' });
     res.json(result.rows[0]);
@@ -116,9 +125,16 @@ router.put('/users/:id/admin', authMiddleware, async (req, res) => {
 // Admin: delete user
 router.delete('/users/:id', authMiddleware, async (req, res) => {
   if (!req.isAdmin) return res.status(403).json({ error: 'Admin only' });
+  if (parseInt(req.params.id) === req.userId) return res.status(400).json({ error: 'Cannot delete yourself' });
   try {
+    // Check not the last admin
+    const adminCount = await db.query('SELECT COUNT(*) FROM users WHERE is_admin = true');
+    const target = await db.query('SELECT is_admin FROM users WHERE id = $1', [req.params.id]);
+    if (target.rows.length === 0) return res.status(404).json({ error: 'User not found' });
+    if (target.rows[0].is_admin && parseInt(adminCount.rows[0].count) <= 1) {
+      return res.status(400).json({ error: 'Cannot delete the last admin' });
+    }
     const result = await db.query('DELETE FROM users WHERE id = $1 RETURNING id', [req.params.id]);
-    if (result.rows.length === 0) return res.status(404).json({ error: 'User not found' });
     res.json({ deleted: true });
   } catch (err) {
     console.error('Delete user error:', err);

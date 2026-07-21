@@ -61,6 +61,7 @@ header button { padding: 4px 14px; cursor: pointer; border: 1px solid #ccc; bord
 <script>
 const API = 'http://localhost:3000/api/v1';
 let token = localStorage.getItem('admin_token');
+let currentUserId = null;
 
 async function req(path, opts = {}) {
   const h = { 'Content-Type': 'application/json', ...opts.headers };
@@ -87,6 +88,7 @@ async function login() {
   if (!r.ok) { document.getElementById('loginErr').textContent = d.error; return; }
   token = d.token; localStorage.setItem('admin_token', token);
   if (!d.user.is_admin) { document.getElementById('loginErr').textContent = 'Not an admin account'; return; }
+  currentUserId = d.user.id;
   document.getElementById('userEmail').textContent = d.user.email;
   document.getElementById('loginWrap').style.display = 'none';
   document.getElementById('appWrap').style.display = 'block';
@@ -116,21 +118,31 @@ async function loadUsers() {
   if (!r.ok) return;
   const list = await r.json();
   const html = list.length === 0 ? '<p style="color:#999">No users.</p>' :
-    list.map(u => '<div class="card"><div class="info"><div class="name">' + esc(u.nickname||u.email) + ' <span style="font-weight:normal;color:#666;font-size:13px">' + esc(u.email) + '</span>' + (u.is_admin ? ' <span style="font-size:11px;background:#1976d2;color:#fff;padding:1px 6px;border-radius:3px">Admin</span>' : '') + '</div><div class="meta">ID: ' + u.id + ' | Inventories: ' + (u.inventory_count||0) + '</div></div><div class="actions">' +
-      (u.is_admin ? '<button class="btn btn-demote" onclick="toggleAdmin(' + u.id + ',false)">Demote</button>' : '<button class="btn btn-admin" onclick="toggleAdmin(' + u.id + ',true)">Make Admin</button>') +
-      '<button class="btn btn-del" onclick="delUser(' + u.id + ')">Delete</button></div></div>'
+    list.map(u => {
+      const isSelf = u.id === currentUserId;
+      return '<div class="card"><div class="info"><div class="name">' + esc(u.nickname||u.email) + ' <span style="font-weight:normal;color:#666;font-size:13px">' + esc(u.email) + '</span>' + (u.is_admin ? ' <span style="font-size:11px;background:#1976d2;color:#fff;padding:1px 6px;border-radius:3px">Admin</span>' : '') + (isSelf ? ' <span style="font-size:11px;color:#999">(you)</span>' : '') + '</div><div class="meta">ID: ' + u.id + ' | Inventories: ' + (u.inventory_count||0) + '</div></div><div class="actions">' +
+        (isSelf ? '<span style="font-size:11px;color:#999;padding:3px 8px">Cannot modify self</span>' :
+          (u.is_admin ? '<button class="btn btn-demote" onclick="toggleAdmin(' + u.id + ',false)">Demote</button>' : '<button class="btn btn-admin" onclick="toggleAdmin(' + u.id + ',true)">Make Admin</button>') +
+          '<button class="btn btn-del" onclick="delUser(' + u.id + ')">Delete</button>') +
+        '</div></div>';
+    })
     ).join('');
   document.getElementById('panelUsers').innerHTML = html;
 }
 
 async function toggleAdmin(id, make) {
-  await req('/auth/users/' + id + '/admin', { method: 'PUT', body: JSON.stringify({ is_admin: make }) });
+  if (id === currentUserId) { alert('You cannot change your own admin status.'); return; }
+  if (!make && !confirm('Demote this admin to regular user?')) return;
+  const r = await req('/auth/users/' + id + '/admin', { method: 'PUT', body: JSON.stringify({ is_admin: make }) });
+  if (!r.ok) { const e = await r.json(); alert(e.error || 'Failed'); return; }
   loadUsers();
 }
 
 async function delUser(id) {
-  if (!confirm('Delete user #' + id + '?')) return;
-  await req('/auth/users/' + id, { method: 'DELETE' });
+  if (id === currentUserId) { alert('You cannot delete your own account.'); return; }
+  if (!confirm('Delete this user and all their data? This cannot be undone.')) return;
+  const r = await req('/auth/users/' + id, { method: 'DELETE' });
+  if (!r.ok) { const e = await r.json(); alert(e.error || 'Failed'); return; }
   loadUsers();
 }
 
@@ -157,6 +169,7 @@ if (token) {
   fetch(API + '/auth/profile', { headers: { 'Authorization': 'Bearer ' + token } })
     .then(r => r.json()).then(user => {
       if (user.is_admin) {
+        currentUserId = user.id;
         document.getElementById('userEmail').textContent = user.email;
         document.getElementById('loginWrap').style.display = 'none';
         document.getElementById('appWrap').style.display = 'block';
