@@ -48,17 +48,22 @@ export function Dashboard({ lastScan, onScanComplete }: Props) {
     setSyncStatus(localStorage.getItem('appsync_last_sync') ? 'synced' : 'local');
   }, [lastScan]);
 
-  const handleExport = async () => {
-    if (!lastScan) return;
-    const { json } = getScanExportData(lastScan);
-    const filePath = prompt('Save to (full path, e.g. C:\\scan.json):');
+  const saveFile = async (content: string, defaultName: string) => {
+    const { save } = await import('@tauri-apps/plugin-dialog');
+    const filePath = await save({ defaultPath: defaultName, filters: [{ name: 'All Files', extensions: ['*'] }] });
     if (!filePath) return;
     try {
-      await exportScan(json, filePath);
-      alert('Exported to ' + filePath);
+      await exportScan(content, filePath);
+      alert('Saved to ' + filePath);
     } catch (err: any) {
-      alert('Export failed: ' + (err?.message || ''));
+      alert('Failed: ' + (err?.message || ''));
     }
+  };
+
+  const handleExport = () => {
+    if (!lastScan) return;
+    const { json } = getScanExportData(lastScan);
+    saveFile(json, 'scan.json');
   };
 
   return (
@@ -66,13 +71,10 @@ export function Dashboard({ lastScan, onScanComplete }: Props) {
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
         <h2>Overview</h2>
         <div style={{ display: 'flex', gap: 6 }}>
-          {lastScan && <button onClick={async () => {
+          {lastScan && <button onClick={() => {
             const script = generateInstallScript(lastScan);
             if (script.startsWith('#')) { alert(script); return; }
-            const filePath = prompt('Save script to:', 'restore-packages.ps1');
-            if (!filePath) return;
-            try { await exportScan(script, filePath); alert('Saved to ' + filePath); }
-            catch (e: any) { alert('Failed: ' + e.message); }
+            saveFile(script, 'restore-packages.ps1');
           }} style={{ fontSize: 12 }}>Script</button>}
           {lastScan && <button onClick={handleExport} style={{ fontSize: 12 }}>Export</button>}
         </div>
