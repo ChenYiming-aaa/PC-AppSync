@@ -66,13 +66,13 @@ export function Dashboard({ lastScan, onScanComplete }: Props) {
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
         <h2>Overview</h2>
         <div style={{ display: 'flex', gap: 6 }}>
-          {lastScan && <button onClick={() => {
+          {lastScan && <button onClick={async () => {
             const script = generateInstallScript(lastScan);
-            const blob = new Blob([script], { type: 'text/plain' });
-            const url = URL.createObjectURL(blob);
-            const a = document.createElement('a');
-            a.href = url; a.download = 'restore-packages.ps1'; a.click();
-            URL.revokeObjectURL(url);
+            if (script.startsWith('#')) { alert(script); return; }
+            const filePath = prompt('Save script to:', 'restore-packages.ps1');
+            if (!filePath) return;
+            try { await exportScan(script, filePath); alert('Saved to ' + filePath); }
+            catch (e: any) { alert('Failed: ' + e.message); }
           }} style={{ fontSize: 12 }}>Script</button>}
           {lastScan && <button onClick={handleExport} style={{ fontSize: 12 }}>Export</button>}
         </div>
