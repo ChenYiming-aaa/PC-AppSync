@@ -1,7 +1,7 @@
 import { useState, useMemo } from 'react';
 import type { ScanResult } from '../types';
 import { AppCard } from '../components/AppCard';
-import { categorizeApp, CATEGORIES } from '../utils/categorize';
+import { categorizeApp, CATEGORIES, isSystemApp } from '../utils/categorize';
 
 interface Props {
   scanResult: ScanResult | null;
@@ -11,25 +11,27 @@ interface Props {
 export function Inventory({ scanResult, onSearchDownload }: Props) {
   const [search, setSearch] = useState('');
   const [filterCategory, setFilterCategory] = useState('全部');
-
-  const grouped = useMemo(() => {
-    if (!scanResult) return [];
-    const groups: Record<string, typeof scanResult.applications> = {};
-    scanResult.applications
-      .filter(app => app.name.toLowerCase().includes(search.toLowerCase()))
-      .forEach(app => {
-        const cat = categorizeApp(app.name);
-        if (filterCategory === '全部' || cat.category === filterCategory) {
-          (groups[cat.category] ||= []).push(app);
-        }
-      });
-    return Object.entries(groups).sort(([a], [b]) => a.localeCompare(b));
-  }, [scanResult, search, filterCategory]);
+  const [showSystem, setShowSystem] = useState(false);
 
   const [collapsed, setCollapsed] = useState<string[]>([]);
   const toggle = (cat: string) => {
     setCollapsed(prev => prev.includes(cat) ? prev.filter(c => c !== cat) : [...prev, cat]);
   };
+
+  const grouped = useMemo(() => {
+    if (!scanResult) return [];
+    const groups: Record<string, typeof scanResult.applications> = {};
+    scanResult.applications
+      .filter(app => showSystem || !isSystemApp(app.name))
+      .filter(app => app.name.toLowerCase().includes(search.toLowerCase()))
+      .forEach(app => {
+        const cat = categorizeApp(app.name);
+        if ((filterCategory === '全部' || cat.category === filterCategory) && cat.category !== '系统组件') {
+          (groups[cat.category] ||= []).push(app);
+        }
+      });
+    return Object.entries(groups).sort(([a], [b]) => a.localeCompare(b));
+  }, [scanResult, search, filterCategory, showSystem]);
 
   if (!scanResult) return <p>No scan data. Run a scan first.</p>;
 
@@ -47,9 +49,10 @@ export function Inventory({ scanResult, onSearchDownload }: Props) {
           <option value="其他">📦 Other</option>
         </select>
       </div>
-      <p style={{ color: '#999', fontSize: 13, marginBottom: 12 }}>
-        Total: {scanResult.applications.length} apps
-      </p>
+      <label style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 10, fontSize: 13, cursor: 'pointer' }}>
+        <input type="checkbox" checked={showSystem} onChange={e => setShowSystem(e.target.checked)} />
+        Show system components (VC++ Redist, Windows SDK, .NET Runtimes, Drives...)
+      </label>
       {grouped.map(([category, apps]) => {
         const isOpen = !collapsed.includes(category);
         const { icon } = categorizeApp(category);

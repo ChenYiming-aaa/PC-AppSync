@@ -3,6 +3,7 @@ import type { ScanResult } from '../types';
 import { ScanButton } from '../components/ScanButton';
 import { api } from '../api/client';
 import { exportScan, getScanExportData } from '../api/scanner';
+import { isSystemApp } from '../utils/categorize';
 
 interface Props {
   lastScan: ScanResult | null;
@@ -10,7 +11,11 @@ interface Props {
 }
 
 export function Dashboard({ lastScan, onScanComplete }: Props) {
-  const appCount = lastScan?.applications.length ?? 0;
+  const [showSystem, setShowSystem] = useState(false);
+  const visibleApps = lastScan?.applications.filter(a => showSystem || !isSystemApp(a.name)) ?? [];
+  const allApps = lastScan?.applications ?? [];
+  const appCount = visibleApps.length;
+  const systemCount = allApps.length - allApps.filter(a => isSystemApp(a.name)).length;
   const runtimeCount = lastScan?.runtimes.length ?? 0;
   const [matchCount, setMatchCount] = useState(0);
 
@@ -24,8 +29,6 @@ export function Dashboard({ lastScan, onScanComplete }: Props) {
       });
     });
   }, [lastScan]);
-
-  const unmatched = appCount - matchCount;
 
   const handleExport = async () => {
     if (!lastScan) return;
@@ -48,11 +51,15 @@ export function Dashboard({ lastScan, onScanComplete }: Props) {
       </div>
       {lastScan ? (
         <>
+          <label style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 12, fontSize: 13, cursor: 'pointer' }}>
+            <input type="checkbox" checked={showSystem} onChange={e => setShowSystem(e.target.checked)} />
+            Show system components ({allApps.length - systemCount} hidden)
+          </label>
           <div style={{ display: 'flex', gap: 12, marginBottom: 20 }}>
             <StatCard value={appCount} label="Applications" />
             <StatCard value={runtimeCount} label="Runtimes" />
             <StatCard value={matchCount} label="Matched" color="#2e7d32" />
-            <StatCard value={unmatched} label="Unmatched" color="#c62828" />
+            <StatCard value={appCount - matchCount} label="Unmatched" color="#c62828" />
           </div>
           <p style={{ textAlign: 'center', color: '#999', fontSize: 12, marginTop: -12 }}>
             Machine: {lastScan.machine_name} | Scanned: {new Date(lastScan.scan_time).toLocaleString()} | Mode: {lastScan.scan_mode}

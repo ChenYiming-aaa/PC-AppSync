@@ -2,6 +2,13 @@ export interface CategoryInfo {
   name: string;
   icon: string;
   keywords: string[];
+  system?: boolean;
+}
+
+export function isSystemApp(name: string): boolean {
+  const lower = name.toLowerCase();
+  const sysCat = CATEGORIES.find(c => c.system);
+  return sysCat ? sysCat.keywords.some(kw => lower.includes(kw)) : false;
 }
 
 // Order matters: first match wins (开发工具 before 通讯 to catch 微信开发者工具)
@@ -46,6 +53,43 @@ export const CATEGORIES: CategoryInfo[] = [
   ] },
   { name: '云盘存储', icon: '\u2601\uFE0F', keywords: ['google drive', 'dropbox', 'onedrive', '百度网盘', 'baidu netdisk', '阿里云盘', 'aliyundrive', '坚果云', 'owncloud', 'nextcloud', 'mega', 'icloud', 'pan.baidu', '迅雷'] },
   { name: '远程工具', icon: '\u{1F4E1}', keywords: ['teamviewer', 'anydesk', 'rustdesk', 'sunlogin', '向日葵', 'splashtop', 'vnc', 'rdp', 'mstsc', 'chrome remote', ' parsec', 'uu远程', 'uuremote', 'virtual serial', '串口'] },
+  // 系统组件 - 默认折叠不显示，用户可手动展开
+  { name: '系统组件', icon: '\u2699\uFE0F', system: true, keywords: [
+    'microsoft visual c++', 'redistributable',
+    'windows sdk', 'windows software development kit', 'windows app certification',
+    '.net runtime', '.net sdk', '.net targeting', '.net apphost', '.net host',
+    '.net framework', 'dotnet', 'netstandard',
+    'windowsappruntime', 'winappruntime',
+    'nvidia ', 'intel(r)', 'intel®', 'amd ', '驱动程序',
+    'cuda ', 'cublas', 'cudart', 'cufft', 'curand', 'cusolver', 'cusparse', 'nvjitlink', 'nvjpeg', 'nvrtc', 'nvtx', 'nvfatbin', 'nvml', 'npp ',
+    'nsight', 'nvidia physx', 'nvidia hd', 'nvidia shadowplay',
+    'microsoft update health', 'microsoft gameinput',
+    'microsoft odbc', 'microsoft.command', 'microsoft.net.sdk',
+    'universal crt', 'universal general midi',
+    'winrt intellisense', 'wpt redistributables',
+    'windows mobile connectivity', 'windows ip over usb',
+    'windows desktop extension', 'windows iot extension',
+    'windows team extension', 'windows driver',
+    'sdk debuggers', 'sdk arm', 'sdk arm64',
+    'compute sanitizer', 'occupancy calculator', 'visual profiler',
+    'vs_wcf', 'vs_blend', 'vs_coreeditor', 'vs_filetracker', 'vs_github', 'vs_web',
+    'sptools_microsoft', 'intelltrace', 'workflow manager',
+    'application verifier', 'kits configuration',
+    'microsoft.office.actionsserver', 'officepushnotifications',
+    'office 16 click-to-run', 'office.actionserver',
+    'microsoft.testplatform', 'entity framework',
+    'iis ', 'iis express',
+    'msi development tools',
+    'open xml sdk',
+    'windows cleaner',
+    'cpp_crt', 'vcpp_crt',
+    'xbox identity', 'widgets platform', 'speech pack',
+    'ink.handwriting',
+    'ksystemsharehost', 'hrcontextmenu',
+    'wpsappext',
+    'av1 video', 'avc ', 'heif', 'mpeg-2', 'vp9 ', 'webp ', 'web media',
+    'raw image',
+  ] },
 ];
 
 export function categorizeApp(name: string): { category: string; icon: string } {
