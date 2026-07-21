@@ -1,5 +1,5 @@
-import { useState } from 'react';
-import { openUrl } from '../api/scanner';
+import { useState, useEffect, useRef } from 'react';
+import { openUrl, queueIconLoad } from '../api/scanner';
 import { categorizeApp, getAppIconUrl } from '../utils/categorize';
 
 interface Props {
@@ -9,14 +9,33 @@ interface Props {
   downloadUrl?: string;
   matched?: boolean;
   onSearch?: () => void;
-  /** Icon URL: from CDN or extracted exe base64 */
-  iconUrl?: string | null;
+  icon_path?: string;
+  install_path?: string;
 }
 
-export function AppCard({ name, version, source, downloadUrl, matched, onSearch, iconUrl }: Props) {
+export function AppCard({ name, version, source, downloadUrl, matched, onSearch, icon_path, install_path }: Props) {
   const { icon: fallbackIcon, category } = categorizeApp(name);
+  const [iconSrc, setIconSrc] = useState<string | null>(null);
   const [imgError, setImgError] = useState(false);
-  const src = iconUrl || getAppIconUrl(name);
+  const loadedRef = useRef(false);
+
+  useEffect(() => {
+    if (loadedRef.current) return;
+    // Try CDN first (fast)
+    const cdnUrl = getAppIconUrl(name);
+    if (cdnUrl) { setIconSrc(cdnUrl); loadedRef.current = true; return; }
+    // Try exe extraction (slow, queued)
+    if (icon_path || install_path) {
+      loadedRef.current = true;
+      queueIconLoad({ name, icon_path, install_path }).then(b64 => {
+        if (b64) setIconSrc(b64);
+      });
+    } else {
+      loadedRef.current = true;
+    }
+  }, [name, icon_path, install_path]);
+
+  const src = iconSrc;
   const showImg = src && !imgError;
 
   const handleDownload = () => {
@@ -49,11 +68,11 @@ export function AppCard({ name, version, source, downloadUrl, matched, onSearch,
       <div>
         {downloadUrl ? (
           <button onClick={handleDownload} style={{ cursor: 'pointer', padding: '4px 14px' }}>
-            🟢 Open Download
+            ️ Open Download
           </button>
         ) : matched === true ? null : onSearch ? (
           <button onClick={onSearch} style={{ cursor: 'pointer', padding: '4px 14px' }}>
-            🔍 Search Bing
+            Search Bing
           </button>
         ) : (
           <span style={{ color: '#ccc', fontSize: 12 }}>---</span>

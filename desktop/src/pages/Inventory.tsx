@@ -2,7 +2,6 @@ import { useState, useMemo } from 'react';
 import type { ScanResult, Application } from '../types';
 import { AppCard } from '../components/AppCard';
 import { categorizeApp, CATEGORIES, findAppGroup, isSystemApp } from '../utils/categorize';
-import { useAppIcons } from '../utils/useAppIcons';
 
 interface Props {
   scanResult: ScanResult | null;
@@ -62,8 +61,6 @@ export function Inventory({ scanResult, onSearchDownload }: Props) {
     return result;
   }, [scanResult, search, filterCategory, showSystem]);
 
-  const appIcons = useAppIcons(scanResult?.applications ?? []);
-
   if (!scanResult) return <p>No scan data. Run a scan first.</p>;
 
   return (
@@ -112,7 +109,7 @@ export function Inventory({ scanResult, onSearchDownload }: Props) {
                       {subOpen && grp.apps.map((app, idx) => (
                         <div key={idx} style={{ paddingLeft: 12 }}>
                           <AppCard name={app.name} version={app.version} source={app.source}
-                            iconUrl={appIcons[app.name]}
+                            icon_path={app.icon_path} install_path={app.install_path}
                             onSearch={() => onSearchDownload(app.name)} />
                         </div>
                       ))}
@@ -122,7 +119,7 @@ export function Inventory({ scanResult, onSearchDownload }: Props) {
                 {/* Standalone apps in this category */}
                 {standalone.map((app, idx) => (
                   <AppCard key={'s' + idx} name={app.name} version={app.version} source={app.source}
-                    iconUrl={appIcons[app.name]}
+                    icon_path={app.icon_path} install_path={app.install_path}
                     onSearch={() => onSearchDownload(app.name)} />
                 ))}
               </div>
