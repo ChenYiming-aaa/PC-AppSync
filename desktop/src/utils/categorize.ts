@@ -213,7 +213,7 @@ const iconMap = new Map([
   ['有道', 'youdao'], ['youdao', 'youdao'],
   ['wps', 'wps'], ['剪映', 'capcut'], ['capcut', 'capcut'],
   ['夸克', 'quark'], ['阿里云', 'alibabacloud'],
-  ['直播伴侣', 'douyin'], ['抖音', 'douyin'], ['douyin', 'douyin'],
+  ['直播伴侣', 'tiktok'], ['抖音', 'tiktok'], ['douyin', 'tiktok'],
   ['钉钉', 'dingtalk'], ['飞书', 'lark'],
   ['百度网盘', 'baidu'], ['baidu', 'baidu'],
   ['搜狗', 'sogou'], ['卡巴', 'kaspersky'], ['kaspersky', 'kaspersky'],
