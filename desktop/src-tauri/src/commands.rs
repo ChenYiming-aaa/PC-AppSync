@@ -31,15 +31,28 @@ pub fn scan_deep() -> Result<scanner::ScanResult, String> {
 
 #[tauri::command]
 pub fn get_app_icon(exe_path: String) -> Result<Option<String>, String> {
+    // Strip icon index suffix like ",0" or ",1"
+    let clean = exe_path.split(',').next().unwrap_or(&exe_path).trim().to_string();
+    if !std::path::Path::new(&clean).exists() {
+        return Ok(None);
+    }
+    // Use a simple .NET script that works even when ExtractAssociatedIcon fails
     let script = format!(
         "Add-Type -AssemblyName System.Drawing; \
          try {{ \
-           $icon = [System.Drawing.Icon]::ExtractAssociatedIcon('{}'); \
+           $i = [System.Drawing.Icon]::ExtractAssociatedIcon('{}'); \
            $ms = New-Object System.IO.MemoryStream; \
-           $icon.ToBitmap().Save($ms, [System.Drawing.Imaging.ImageFormat]::Png); \
+           $i.ToBitmap().Save($ms, [System.Drawing.Imaging.ImageFormat]::Png); \
            [Convert]::ToBase64String($ms.ToArray()) \
-         }} catch {{ '' }}",
-        exe_path.replace('\'', "''")
+         }} catch {{ \
+           try {{ \
+             $bmp = [System.Drawing.Bitmap]::FromFile('{}'); \
+             $ms = New-Object System.IO.MemoryStream; \
+             $bmp.Save($ms, [System.Drawing.Imaging.ImageFormat]::Png); \
+             [Convert]::ToBase64String($ms.ToArray()) \
+           }} catch {{ '' }} \
+         }}",
+        clean.replace('\'', "''"), clean.replace('\'', "''")
     );
     let output = std::process::Command::new("powershell")
         .args(["-NoProfile", "-NonInteractive", "-Command", &script])
