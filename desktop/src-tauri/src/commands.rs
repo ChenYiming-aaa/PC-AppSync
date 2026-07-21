@@ -29,14 +29,72 @@ pub fn scan_deep() -> Result<scanner::ScanResult, String> {
     Ok(result)
 }
 
-#[tauri::command]
-pub fn get_app_icon(exe_path: String) -> Result<Option<String>, String> {
-    // Strip icon index suffix like ",0" or ",1"
-    let clean = exe_path.split(',').next().unwrap_or(&exe_path).trim().to_string();
-    if !std::path::Path::new(&clean).exists() {
-        return Ok(None);
+/// Find the best exe path for an app by searching Start Menu and common locations
+fn find_app_exe(app_name: &str, known_paths: &[String]) -> Option<String> {
+    // 1. Try known paths first
+    for p in known_paths {
+        let clean = p.split(',').next().unwrap_or(p).trim();
+        if std::path::Path::new(clean).exists() {
+            return Some(clean.to_string());
+        }
     }
-    // Extract icon via PowerShell, clean 32bpp ARGB to avoid libpng tRNS warning
+    let lower = app_name.to_lowercase();
+    // 2. Search Start Menu shortcuts
+    let start_menu_dirs = [
+        std::env::var("PROGRAMDATA").ok().map(|d| d + "\\Microsoft\\Windows\\Start Menu\\Programs"),
+        std::env::var("APPDATA").ok().map(|d| d + "\\Microsoft\\Windows\\Start Menu\\Programs"),
+        Some("C:\\ProgramData\\Microsoft\\Windows\\Start Menu\\Programs".to_string()),
+    ];
+    for dir in start_menu_dirs.iter().flatten() {
+        if let Ok(entries) = std::fs::read_dir(dir) {
+            for entry in entries.flatten() {
+                let path = entry.path();
+                if path.extension().and_then(|e| e.to_str()) == Some("lnk") {
+                    let fname = path.file_stem().and_then(|s| s.to_str()).unwrap_or("").to_lowercase();
+                    if fname.contains(&lower) || lower.contains(&fname) {
+                        // Read shortcut target via PowerShell
+                        let script = format!(
+                            "$s=(New-Object -ComObject WScript.Shell).CreateShortcut('{}'); echo $s.TargetPath",
+                            path.to_string_lossy().replace('\'', "''")
+                        );
+                        if let Ok(out) = std::process::Command::new("powershell")
+                            .args(["-NoProfile", "-NonInteractive", "-Command", &script]).output()
+                        {
+                            let target = String::from_utf8_lossy(&out.stdout).trim().to_string();
+                            if !target.is_empty() && std::path::Path::new(&target).exists() {
+                                return Some(target);
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+    // 3. Search common install dirs by app name keywords
+    let search_terms = lower.split(|c: char| !c.is_alphanumeric()).filter(|s| s.len() > 2).collect::<Vec<_>>();
+    let common_roots = ["C:\\Program Files", "C:\\Program Files (x86)", &std::env::var("LOCALAPPDATA").unwrap_or_default()];
+    for root in &common_roots {
+        if let Ok(entries) = std::fs::read_dir(root) {
+            for entry in entries.flatten() {
+                let dir_name = entry.file_name().to_string_lossy().to_lowercase();
+                if search_terms.iter().any(|t| dir_name.contains(t)) {
+                    // Found matching directory - look for exe
+                    if let Ok(files) = std::fs::read_dir(entry.path()) {
+                        for file in files.flatten() {
+                            let fp = file.path();
+                            if fp.extension().and_then(|e| e.to_str()) == Some("exe") {
+                                return Some(fp.to_string_lossy().to_string());
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+    None
+}
+
+fn extract_icon_via_powershell(exe: &str) -> Option<String> {
     let script = format!(
         "Add-Type -AssemblyName System.Drawing; \
          try {{ \
@@ -49,29 +107,28 @@ pub fn get_app_icon(exe_path: String) -> Result<Option<String>, String> {
            $bmp32.Save($ms, [System.Drawing.Imaging.ImageFormat]::Png); \
            $bmp32.Dispose(); \
            [Convert]::ToBase64String($ms.ToArray()) \
-         }} catch {{ \
-           try {{ \
-             $bmp2 = [System.Drawing.Bitmap]::FromFile('{}'); \
-             $ms2 = New-Object System.IO.MemoryStream; \
-             $bmp2.Save($ms2, [System.Drawing.Imaging.ImageFormat]::Png); \
-             [Convert]::ToBase64String($ms2.ToArray()) \
-           }} catch {{ '' }} \
-         }}",
-        clean.replace('\'', "''"), clean.replace('\'', "''")
+         }} catch {{ '' }}",
+        exe.replace('\'', "''")
     );
-    let output = std::process::Command::new("powershell")
-        .args(["-NoProfile", "-NonInteractive", "-Command", &script])
-        .output()
-        .map_err(|e| format!("Failed to run powershell: {}", e))?;
-    if output.status.success() {
-        let b64 = String::from_utf8_lossy(&output.stdout).trim().to_string();
-        if b64.is_empty() {
-            Ok(None)
-        } else {
-            Ok(Some("data:image/png;base64,".to_string() + &b64))
+    if let Ok(output) = std::process::Command::new("powershell")
+        .args(["-NoProfile", "-NonInteractive", "-Command", &script]).output()
+    {
+        if output.status.success() {
+            let b64 = String::from_utf8_lossy(&output.stdout).trim().to_string();
+            if !b64.is_empty() {
+                return Some("data:image/png;base64,".to_string() + &b64);
+            }
         }
-    } else {
-        Ok(None)
+    }
+    None
+}
+
+#[tauri::command]
+pub fn get_app_icon(app_name: String, known_paths: Vec<String>) -> Result<Option<String>, String> {
+    let exe = find_app_exe(&app_name, &known_paths);
+    match exe {
+        Some(path) => Ok(extract_icon_via_powershell(&path)),
+        None => Ok(None),
     }
 }
 

@@ -15,12 +15,15 @@ export async function openUrl(url: string): Promise<void> {
 
 let iconCache = new Map<string, string>();
 
-export async function getAppIcon(app: { icon_path?: string; name: string }): Promise<string | null> {
+export async function getAppIcon(app: { icon_path?: string; name: string; install_path?: string }): Promise<string | null> {
   const name = app.name;
   if (iconCache.has(name)) return iconCache.get(name) || null;
-  if (!app.icon_path) { iconCache.set(name, ''); return null; }
+  const knownPaths: string[] = [];
+  if (app.icon_path) knownPaths.push(app.icon_path);
+  if (app.install_path) knownPaths.push(app.install_path);
+  if (knownPaths.length === 0) { iconCache.set(name, ''); return null; }
   try {
-    const b64 = await invoke<string | null>('get_app_icon', { exePath: app.icon_path });
+    const b64 = await invoke<string | null>('get_app_icon', { appName: name, knownPaths });
     iconCache.set(name, b64 || '');
     return b64;
   } catch { iconCache.set(name, ''); return null; }
