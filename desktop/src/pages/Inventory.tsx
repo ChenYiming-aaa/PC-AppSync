@@ -67,7 +67,10 @@ export function Inventory({ scanResult, onSearchDownload }: Props) {
 
   return (
     <div>
-      <h2>Software Inventory</h2>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+        <h2>Software Inventory</h2>
+        <button onClick={() => window.location.reload()} style={{ fontSize: 12, padding: '4px 12px', cursor: 'pointer' }}>Refresh</button>
+      </div>
       <div style={{ display: 'flex', gap: 8, marginBottom: 14 }}>
         <input type="text" placeholder="Search software..." value={search}
           onChange={e => setSearch(e.target.value)}

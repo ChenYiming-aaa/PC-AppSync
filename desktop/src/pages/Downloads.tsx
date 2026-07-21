@@ -116,7 +116,10 @@ export function Downloads({ scanResult }: Props) {
 
   return (
     <div>
-      <h2>Downloads</h2>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+        <h2>Downloads</h2>
+        <button onClick={() => window.location.reload()} style={{ fontSize: 12, padding: '4px 12px', cursor: 'pointer' }}>Refresh</button>
+      </div>
 
       {/* Cross-device comparison selector */}
       {inventories.length > 1 && (
