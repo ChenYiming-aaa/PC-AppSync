@@ -30,6 +30,34 @@ pub fn scan_deep() -> Result<scanner::ScanResult, String> {
 }
 
 #[tauri::command]
+pub fn get_app_icon(exe_path: String) -> Result<Option<String>, String> {
+    let script = format!(
+        "Add-Type -AssemblyName System.Drawing; \
+         try {{ \
+           $icon = [System.Drawing.Icon]::ExtractAssociatedIcon('{}'); \
+           $ms = New-Object System.IO.MemoryStream; \
+           $icon.ToBitmap().Save($ms, [System.Drawing.Imaging.ImageFormat]::Png); \
+           [Convert]::ToBase64String($ms.ToArray()) \
+         }} catch {{ '' }}",
+        exe_path.replace('\'', "''")
+    );
+    let output = std::process::Command::new("powershell")
+        .args(["-NoProfile", "-NonInteractive", "-Command", &script])
+        .output()
+        .map_err(|e| format!("Failed to run powershell: {}", e))?;
+    if output.status.success() {
+        let b64 = String::from_utf8_lossy(&output.stdout).trim().to_string();
+        if b64.is_empty() {
+            Ok(None)
+        } else {
+            Ok(Some("data:image/png;base64,".to_string() + &b64))
+        }
+    } else {
+        Ok(None)
+    }
+}
+
+#[tauri::command]
 pub fn export_scan(data: String, file_path: String) -> Result<(), String> {
     std::fs::write(&file_path, &data)
         .map_err(|e| format!("Failed to write file: {}", e))?;

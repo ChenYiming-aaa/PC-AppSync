@@ -97,7 +97,7 @@ export function Downloads({ scanResult }: Props) {
         <>
           <p style={{ color: '#2e7d32', fontSize: 13, margin: '8px 0' }}>--- Matched (Auto-link) ---</p>
           {matched.map((app, i) => (
-            <AppCard key={i} name={app.name} version={app.version}
+            <AppCard key={i} name={app.name} version={app.version} app={app}
               downloadUrl={links[app.name]?.official_url} matched={true} />
           ))}
         </>
@@ -107,7 +107,7 @@ export function Downloads({ scanResult }: Props) {
         <>
           <p style={{ color: '#c62828', fontSize: 13, margin: '8px 0' }}>--- Unmatched (Search Required) ---</p>
           {unmatched.map((app, i) => (
-            <AppCard key={i} name={app.name} version={app.version} matched={false}
+            <AppCard key={i} name={app.name} version={app.version} app={app} matched={false}
               onSearch={() => handleSearch(app.name)} />
           ))}
         </>

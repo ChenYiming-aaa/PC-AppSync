@@ -1,5 +1,7 @@
-import { openUrl } from '../api/scanner';
-import { categorizeApp } from '../utils/categorize';
+import { useState, useEffect } from 'react';
+import { openUrl, getAppIcon } from '../api/scanner';
+import { categorizeApp, getAppIconUrl } from '../utils/categorize';
+import type { Application } from '../types';
 
 interface Props {
   name: string;
@@ -8,10 +10,21 @@ interface Props {
   downloadUrl?: string;
   matched?: boolean;
   onSearch?: () => void;
+  app?: Application;
 }
 
-export function AppCard({ name, version, source, downloadUrl, matched, onSearch }: Props) {
-  const { icon, category } = categorizeApp(name);
+export function AppCard({ name, version, source, downloadUrl, matched, onSearch, app }: Props) {
+  const { icon: fallbackIcon, category } = categorizeApp(name);
+  const [iconSrc, setIconSrc] = useState<string | null>(getAppIconUrl(name));
+
+  useEffect(() => {
+    if (app?.icon_path) {
+      getAppIcon({ icon_path: app.icon_path, name: app.name }).then(b64 => {
+        if (b64) setIconSrc(b64);
+      });
+    }
+  }, [app?.icon_path, app?.name]);
+
   const handleDownload = () => {
     if (downloadUrl) openUrl(downloadUrl);
   };
@@ -22,7 +35,11 @@ export function AppCard({ name, version, source, downloadUrl, matched, onSearch 
       display: 'flex', justifyContent: 'space-between', alignItems: 'center'
     }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: 10, flex: 1 }}>
-        <span style={{ fontSize: 18 }}>{icon}</span>
+        {iconSrc ? (
+          <img src={iconSrc} alt="" style={{ width: 22, height: 22, borderRadius: 3 }} />
+        ) : (
+          <span style={{ fontSize: 18 }}>{fallbackIcon}</span>
+        )}
         <div style={{ flex: 1 }}>
           <strong>{name}</strong>
           <span style={{ marginLeft: 8, color: '#666', fontSize: 13 }}>v{version}</span>

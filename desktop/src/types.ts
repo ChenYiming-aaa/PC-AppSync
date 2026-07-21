@@ -13,6 +13,7 @@ export interface Application {
   source: string;
   install_path?: string;
   install_date?: string;
+  icon_path?: string;
 }
 
 export interface Package {

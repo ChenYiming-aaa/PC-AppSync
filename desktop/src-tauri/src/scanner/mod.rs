@@ -22,6 +22,7 @@ pub struct Application {
     pub source: String,
     pub install_path: Option<String>,
     pub install_date: Option<String>,
+    pub icon_path: Option<String>,
 }
 
 #[derive(Debug, Serialize, Deserialize)]

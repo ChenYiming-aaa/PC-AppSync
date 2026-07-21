@@ -24,6 +24,7 @@ fn parse_winget_output(text: &str) -> Vec<Application> {
                 source: "winget".to_string(),
                 install_path: None,
                 install_date: None,
+                icon_path: None,
             });
         }
     }
@@ -45,6 +46,7 @@ pub fn get_choco_apps() -> Vec<Application> {
                         source: "choco".to_string(),
                         install_path: None,
                         install_date: None,
+                        icon_path: None,
                     })
                 } else { None }
             }).collect()
@@ -68,6 +70,7 @@ pub fn get_scoop_apps() -> Vec<Application> {
                         source: "scoop".to_string(),
                         install_path: None,
                         install_date: None,
+                        icon_path: None,
                     })
                 } else { None }
             }).collect()

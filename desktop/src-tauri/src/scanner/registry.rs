@@ -34,13 +34,16 @@ pub fn get_installed_apps() -> Vec<Application> {
                     let display_name: Option<String> = key.get_value("DisplayName").ok();
                     if let Some(name) = display_name {
                         if name.trim().is_empty() { continue; }
+                        let icon_path: Option<String> = key.get_value("DisplayIcon").ok();
+                        let install_path: Option<String> = key.get_value("InstallLocation").ok();
                         apps.push(Application {
                             name: name.clone(),
                             version: key.get_value("DisplayVersion").ok().unwrap_or_default(),
                             publisher: key.get_value("Publisher").ok(),
                             source: "registry".to_string(),
-                            install_path: key.get_value("InstallLocation").ok(),
+                            install_path: install_path.clone(),
                             install_date: key.get_value("InstallDate").ok(),
+                            icon_path: icon_path.or(install_path.map(|p| p + "\\" + &name + ".exe")),
                         });
                     }
                 }
