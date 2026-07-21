@@ -1908,7 +1908,7 @@
       "trae ai",
       "字节trae"
     ],
-    "official_url": "https://www.trae.com/",
+    "official_url": "https://www.trae.ai/",
     "direct_download_url": "",
     "category": "development",
     "verified": true
@@ -2146,7 +2146,7 @@
       "为了吾王",
       "for the king"
     ],
-    "official_url": "https://www.curseforge.com/",
+    "official_url": "https://store.steampowered.com/app/527230/For_The_King/",
     "direct_download_url": "",
     "category": "game",
     "verified": true
@@ -7285,6 +7285,18 @@
     "official_url": "https://github.com/Wox-launcher/Wox",
     "direct_download_url": "",
     "category": "utility",
+    "verified": true
+  },
+  {
+    "software_name": "猛兽派对",
+    "aliases": [
+      "猛兽派对",
+      "party animals",
+      "partyanimals"
+    ],
+    "official_url": "https://store.steampowered.com/app/1260320/Party_Animals/",
+    "direct_download_url": "",
+    "category": "game",
     "verified": true
   }
 ]
