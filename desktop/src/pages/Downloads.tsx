@@ -206,7 +206,7 @@ export function Downloads({ scanResult: initialScan }: Props) {
           {matched.map((app, i) => (
             <AppCard key={i} name={app.name} version={app.version}
               downloadUrl={links[app.name]?.official_url} matched={true}
-              isCommunity={!!(links[app.name] as any)?.contributor_id}
+              isCommunity={!!links[app.name]?.contributor_id}
               publisher={app.publisher} installPath={app.install_path} installDate={app.install_date} />
           ))}
         </>

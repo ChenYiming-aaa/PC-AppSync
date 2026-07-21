@@ -10,7 +10,7 @@ router.get('/search', async (req, res) => {
     const { q } = req.query;
     if (!q) return res.status(400).json({ error: 'Query param q required' });
     const result = await db.query(
-      'SELECT id, software_name, aliases, official_url, direct_download_url, category, verified FROM download_links WHERE software_name ILIKE $1 OR $2 = ANY(aliases) ORDER BY verified DESC, software_name ASC LIMIT 20',
+      'SELECT id, software_name, aliases, official_url, direct_download_url, category, verified, contributor_id FROM download_links WHERE software_name ILIKE $1 OR $2 = ANY(aliases) ORDER BY verified DESC, software_name ASC LIMIT 20',
       ['%' + q + '%', q]
     );
     res.json(result.rows);

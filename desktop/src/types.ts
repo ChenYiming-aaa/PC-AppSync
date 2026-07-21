@@ -64,6 +64,7 @@ export interface DownloadLink {
   direct_download_url?: string;
   category?: string;
   verified: boolean;
+  contributor_id?: number | null;
 }
 
 export interface User {
