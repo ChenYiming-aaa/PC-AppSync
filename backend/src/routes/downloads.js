@@ -63,12 +63,15 @@ router.get('/links/pending', async (req, res) => {
 router.put('/links/:id/verify', async (req, res) => {
   if (!req.isAdmin) return res.status(403).json({ error: 'Admin only' });
   try {
-    const result = await db.query(
-      'UPDATE download_links SET verified = $1, updated_at = NOW() WHERE id = $2 RETURNING id',
-      [req.body.verified === true, req.params.id]
-    );
-    if (result.rows.length === 0) return res.status(404).json({ error: 'Not found' });
-    res.json({ updated: true });
+    if (req.body.verified === true) {
+      const result = await db.query('UPDATE download_links SET verified = true, updated_at = NOW() WHERE id = $1 RETURNING id', [req.params.id]);
+      if (result.rows.length === 0) return res.status(404).json({ error: 'Not found' });
+      res.json({ updated: true });
+    } else {
+      const result = await db.query('DELETE FROM download_links WHERE id = $1 RETURNING id', [req.params.id]);
+      if (result.rows.length === 0) return res.status(404).json({ error: 'Not found' });
+      res.json({ deleted: true });
+    }
   } catch (err) {
     console.error('Verify error:', err);
     res.status(500).json({ error: 'Internal server error' });
