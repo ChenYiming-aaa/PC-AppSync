@@ -21,18 +21,15 @@ export function AppCard({ name, version, source, downloadUrl, matched, onSearch,
 
   useEffect(() => {
     if (loadedRef.current) return;
-    // Try CDN first (fast)
+    loadedRef.current = true;
+    // Try CDN first
     const cdnUrl = getAppIconUrl(name);
-    if (cdnUrl) { setIconSrc(cdnUrl); loadedRef.current = true; return; }
-    // Try exe extraction (slow, queued)
-    if (icon_path || install_path) {
-      loadedRef.current = true;
-      queueIconLoad({ name, icon_path, install_path }).then(b64 => {
-        if (b64) setIconSrc(b64);
-      });
-    } else {
-      loadedRef.current = true;
-    }
+    if (cdnUrl) { setIconSrc(cdnUrl); return; }
+    // Only try extraction if we have a path
+    if (!icon_path && !install_path) return;
+    queueIconLoad({ name, icon_path, install_path }).then(b64 => {
+      if (b64) setIconSrc(b64);
+    });
   }, [name, icon_path, install_path]);
 
   const src = iconSrc;
