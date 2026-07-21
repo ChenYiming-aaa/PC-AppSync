@@ -30,13 +30,13 @@ export function Dashboard({ lastScan, onScanComplete }: Props) {
   useEffect(() => {
     if (!lastScan) { setMatchCount(0); return; }
     let count = 0;
-    lastScan.applications.forEach(app => {
+    visibleApps.forEach(app => {
       api.searchDownloadLinks(app.name).then(results => {
         if (results.length > 0) count++;
         setMatchCount(count);
       });
     });
-  }, [lastScan]);
+  }, [lastScan, showSystem]);
 
   const handleExport = async () => {
     if (!lastScan) return;
@@ -61,7 +61,7 @@ export function Dashboard({ lastScan, onScanComplete }: Props) {
         <>
           <label style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 12, fontSize: 13, cursor: 'pointer' }}>
             <input type="checkbox" checked={showSystem} onChange={e => setShowSystem(e.target.checked)} />
-            Show system components ({allApps.length - systemCount} hidden)
+            Show system components ({systemCount} hidden)
           </label>
           <div style={{ display: 'flex', gap: 12, marginBottom: 20 }}>
             <StatCard value={appCount} label="Applications" />

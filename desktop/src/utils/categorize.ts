@@ -189,7 +189,10 @@ const iconMap = new Map([
 export function getAppIconUrl(name: string): string | null {
   const lower = name.toLowerCase();
   for (const [key, slug] of iconMap) {
-    if (lower.includes(key)) return `https://cdn.simpleicons.org/${slug}`;
+    if (lower.includes(key)) {
+      // Try jsDelivr first (accessible in China), fallback to simple-icons CDN
+      return `https://cdn.jsdelivr.net/npm/simple-icons@latest/icons/${slug}.svg`;
+    }
   }
   return null;
 }
