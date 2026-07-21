@@ -43,6 +43,7 @@ async function processQueue() {
     activeWorkers++;
     try {
       const b64 = await invoke<string | null>('get_app_icon', {
+        appName: item.app.name,
         displayIcon: item.app.icon_path || '',
         installDir: item.app.install_path || null,
       });
@@ -61,6 +62,11 @@ async function processQueue() {
 /** Diagnostic: test icon extraction for a specific app */
 export async function debugIcon(appName: string, displayIcon: string, installDir: string): Promise<string> {
   return invoke<string>('debug_icon', { appName, displayIcon, installDir: installDir || null });
+}
+
+/** Debug: test icon extraction with shortcut-based approach */
+export async function debugIcon2(appName: string, displayIcon: string, installDir: string): Promise<string | null> {
+  return invoke<string | null>('get_app_icon', { appName, displayIcon, installDir: installDir || null });
 }
 
 export function queueIconLoad(app: { icon_path?: string; name: string; install_path?: string }): Promise<string | null> {
