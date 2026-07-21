@@ -29,58 +29,50 @@ pub fn scan_deep() -> Result<scanner::ScanResult, String> {
     Ok(result)
 }
 
+/// Extract icon from a DisplayIcon registry value using Windows Shell API
+/// Handles: exe, exe,0, .ico, dll,-1, etc.
 #[tauri::command]
-pub fn get_app_icon(app_name: String, known_paths: Vec<String>) -> Result<Option<String>, String> {
-    // Collect all candidate paths from known_paths
-    let mut candidates: Vec<String> = Vec::new();
-    for p in &known_paths {
-        // If it's a directory, look for exe files inside
-        let p_clean = p.split(',').next().unwrap_or(p).trim().to_string();
-        if std::path::Path::new(&p_clean).is_dir() {
-            if let Ok(entries) = std::fs::read_dir(&p_clean) {
-                for entry in entries.flatten() {
-                    let fp = entry.path();
-                    if fp.extension().and_then(|e| e.to_str()) == Some("exe") {
-                        candidates.push(fp.to_string_lossy().to_string());
-                    }
-                }
-            }
-        } else {
-            candidates.push(p_clean);
-        }
-    }
+pub fn get_app_icon(display_icon: String, install_dir: Option<String>) -> Result<Option<String>, String> {
+    let script = format!(r#"
+Add-Type -AssemblyName System.Drawing
+$result = ''
+$paths = @()
 
-    // Use PowerShell with Windows Shell COM (same approach as Geek Uninstaller)
-    // This handles all DisplayIcon formats: exe, exe,N, dll,N, cpl,N
-    let paths_json = serde_json::to_string(&candidates).unwrap_or_else(|_| "[]".to_string());
-    let script = format!(
-        "Add-Type -AssemblyName System.Drawing; \
-         $paths = '{}' | ConvertFrom-Json; \
-         $result = ''; \
-         foreach ($p in $paths) {{ \
-           if (-not (Test-Path $p)) {{ continue }}; \
-           try {{ \
-             $shell = New-Object -ComObject Shell.Application; \
-             $f = $shell.Namespace([System.IO.Path]::GetDirectoryName($p)); \
-             if (-not $f) {{ continue }}; \
-             $fi = $f.ParseName([System.IO.Path]::GetFileName($p)); \
-             if (-not $fi) {{ continue }}; \
-             $icon = $fi.ExtractIcon(32); \
-             if (-not $icon) {{ continue }}; \
-             $bmp32 = New-Object System.Drawing.Bitmap 32,32; \
-             $g = [System.Drawing.Graphics]::FromImage($bmp32); \
-             $g.DrawIcon($icon, 0, 0); \
-             $g.Dispose(); \
-             $ms = New-Object System.IO.MemoryStream; \
-             $bmp32.Save($ms, [System.Drawing.Imaging.ImageFormat]::Png); \
-             $bmp32.Dispose(); \
-             $result = [Convert]::ToBase64String($ms.ToArray()); \
-             break; \
-           }} catch {{ continue }}; \
-         }}; \
-         echo $result",
-        paths_json.replace('\'', "''")
-    );
+# Primary: DisplayIcon value
+$di = '{0}'
+if ($di) {{ $paths += $di }}
+
+# Secondary: try install_dir + guessed exe
+$installDir = '{1}'
+if ($installDir -and (Test-Path $installDir)) {{
+    Get-ChildItem $installDir -Filter *.exe -ErrorAction SilentlyContinue | ForEach-Object {{ $paths += $_.FullName }}
+}}
+
+foreach ($raw in $paths) {{
+    $clean = $raw -replace ',.*$', '' -replace '%SystemRoot%', $env:SystemRoot -replace '%ProgramFiles%', $env:ProgramFiles
+    if (-not (Test-Path $clean)) {{ continue }}
+    try {{
+        $ext = [System.IO.Path]::GetExtension($clean).ToLower()
+        if ($ext -eq '.ico') {{
+            $ico = [System.Drawing.Icon]::new($clean)
+            $bmp = $ico.ToBitmap()
+        }} else {{
+            $ico = [System.Drawing.Icon]::ExtractAssociatedIcon($clean)
+            if (-not $ico) {{ continue }}
+            $bmp = New-Object System.Drawing.Bitmap 32,32
+            $g = [System.Drawing.Graphics]::FromImage($bmp)
+            $g.DrawIcon($ico, 0, 0)
+            $g.Dispose()
+        }}
+        $ms = New-Object System.IO.MemoryStream
+        $bmp.Save($ms, [System.Drawing.Imaging.ImageFormat]::Png)
+        $result = [Convert]::ToBase64String($ms.ToArray())
+        $bmp.Dispose()
+        break
+    }} catch {{ continue }}
+}}
+Write-Host -NoNewline $result
+"#, display_icon.replace('\'', "''"), install_dir.unwrap_or_default().replace('\'', "''"));
 
     let output = std::process::Command::new("powershell")
         .args(["-NoProfile", "-NonInteractive", "-Command", &script])
