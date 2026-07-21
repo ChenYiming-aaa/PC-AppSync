@@ -3,6 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <title>AppSync Admin</title>
 <style>
 * { margin: 0; padding: 0; box-sizing: border-box; }
@@ -40,7 +41,7 @@ header button { padding: 4px 14px; cursor: pointer; border: 1px solid #ccc; bord
   <div class="err" id="loginErr"></div>
 <input type="email" id="email" placeholder="Email">
 <input type="password" id="password" placeholder="Password">
-  <button onclick="login()">Login</button>
+  <button id="loginBtn">Login</button>
 </div>
 
 <div class="app-wrap" id="appWrap">
@@ -79,6 +80,7 @@ async function req(path, opts = {}) {
   return r;
 }
 
+document.getElementById('loginBtn').addEventListener('click', login);
 async function login() {
   const r = await req('/auth/login', {
     method: 'POST',
