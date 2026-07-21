@@ -49,14 +49,14 @@ export function Dashboard({ lastScan, onScanComplete }: Props) {
   }, [lastScan]);
 
   const saveFile = async (content: string, defaultName: string) => {
-    const { save } = await import('@tauri-apps/plugin-dialog');
-    const filePath = await save({ defaultPath: defaultName, filters: [{ name: 'All Files', extensions: ['*'] }] });
-    if (!filePath) return;
     try {
+      const { save } = await import('@tauri-apps/plugin-dialog');
+      const filePath = await save({ defaultPath: defaultName, filters: [{ name: 'All Files', extensions: ['*'] }] });
+      if (!filePath) return;
       await exportScan(content, filePath);
       alert('Saved to ' + filePath);
     } catch (err: any) {
-      alert('Failed: ' + (err?.message || ''));
+      alert('Dialog error: ' + (err?.message || ''));
     }
   };
 
