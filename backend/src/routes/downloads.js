@@ -20,11 +20,21 @@ router.get('/search', async (req, res) => {
   }
 });
 
+function isValidUrl(str) {
+  try {
+    const url = new URL(str);
+    return ['http:', 'https:'].includes(url.protocol);
+  } catch { return false; }
+}
+
 router.post('/links', async (req, res) => {
   try {
     const { software_name, aliases, official_url, direct_download_url, category } = req.body;
     if (!software_name || !official_url) {
       return res.status(400).json({ error: 'software_name and official_url required' });
+    }
+    if (!isValidUrl(official_url)) {
+      return res.status(400).json({ error: 'official_url must be a valid http/https URL' });
     }
     const result = await db.query(
       'INSERT INTO download_links (software_name, aliases, official_url, direct_download_url, category, contributor_id) VALUES ($1, $2, $3, $4, $5, $6) RETURNING id',

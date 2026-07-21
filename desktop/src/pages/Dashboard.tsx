@@ -32,19 +32,20 @@ export function Dashboard({ lastScan, onScanComplete }: Props) {
 
   useEffect(() => {
     if (!lastScan) { setMatchCount(0); return; }
-    let count = 0;
-    visibleApps.forEach(app => {
-      api.searchDownloadLinks(app.name).then(results => {
-        if (results.length > 0) count++;
-        setMatchCount(count);
-      });
+    let cancelled = false;
+    Promise.allSettled(
+      visibleApps.map(app => api.searchDownloadLinks(app.name))
+    ).then(results => {
+      if (!cancelled) {
+        setMatchCount(results.filter(r => r.status === 'fulfilled' && r.value.length > 0).length);
+      }
     });
+    return () => { cancelled = true; };
   }, [lastScan, showSystem]);
 
   useEffect(() => {
     if (!lastScan) { setSyncStatus('none'); return; }
-    const stored = localStorage.getItem('appsync_last_sync');
-    if (stored) setSyncStatus('synced');
+    setSyncStatus(localStorage.getItem('appsync_last_sync') ? 'synced' : 'local');
   }, [lastScan]);
 
   const handleExport = async () => {

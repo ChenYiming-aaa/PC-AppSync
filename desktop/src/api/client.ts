@@ -41,9 +41,9 @@ async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
 
   let res = await fetch(API_BASE + path, { ...options, headers });
   
-  // Auto-refresh token on 401
-  if (res.status === 401 && !refreshPromise) {
-    refreshPromise = tryRefresh();
+  // Auto-refresh token on 401 (all concurrent callers share the same refresh)
+  if (res.status === 401) {
+    if (!refreshPromise) refreshPromise = tryRefresh();
     const refreshed = await refreshPromise;
     refreshPromise = null;
     if (refreshed) {
@@ -99,4 +99,9 @@ export const api = {
 
   submitDownloadLink: (data: { software_name: string; official_url: string; aliases?: string[]; category?: string }) =>
     request<{ id: number }>('/downloads/links', { method: 'POST', body: JSON.stringify(data) }),
+
+  getPendingLinks: () => request<(DownloadLink & { contributor_email?: string })[]>('/downloads/links/pending'),
+
+  verifyLink: (id: number, verified: boolean) =>
+    request<{ updated: boolean }>('/downloads/links/' + id + '/verify', { method: 'PUT', body: JSON.stringify({ verified }) }),
 };

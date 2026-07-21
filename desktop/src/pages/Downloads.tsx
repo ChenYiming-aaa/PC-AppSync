@@ -122,7 +122,10 @@ export function Downloads({ scanResult }: Props) {
       {inventories.length > 1 && (
         <div style={{ marginBottom: 14, padding: 10, background: '#f8f9ff', borderRadius: 8, border: '1px solid #d0d7ff' }}>
           <label style={{ fontSize: 13, fontWeight: 'bold' }}>Compare with old machine:</label>
-          <select value={selectedOtherId || ''} onChange={e => setSelectedOtherId(parseInt(e.target.value) || null)}
+          <select value={selectedOtherId || ''} onChange={e => {
+            const val = parseInt(e.target.value, 10);
+            setSelectedOtherId(isNaN(val) ? null : val);
+          }}
             style={{ marginLeft: 8, padding: '4px 8px' }}>
             {inventories.filter(i => i.id !== inventories[0]?.id).map(i => (
               <option key={i.id} value={i.id}>{i.machine_name} ({new Date(i.scan_time).toLocaleDateString()})</option>
@@ -183,7 +186,9 @@ export function Downloads({ scanResult }: Props) {
             <p style={{ color: '#2e7d32', fontSize: 13, margin: 0 }}>--- Matched (Auto-link) ---</p>
             <button onClick={() => {
               const urls = matched.map(a => `${a.name}: ${links[a.name]?.official_url || ''}`).join('\n');
-              navigator.clipboard.writeText(urls).then(() => alert('Copied ' + matched.length + ' URLs!'));
+              navigator.clipboard.writeText(urls)
+                .then(() => alert('Copied ' + matched.length + ' URLs!'))
+                .catch(() => alert('Failed to copy to clipboard'));
             }} style={{ fontSize: 11, padding: '2px 8px', cursor: 'pointer' }}>
               Copy All Links
             </button>
