@@ -35,6 +35,7 @@ let busy = false;
 let totalQueued = 0;
 let completedCount = 0;
 const progressListeners: Array<(p: { done: number; total: number }) => void> = [];
+let progressTimer: any = null;
 
 export function onIconProgress(cb: (p: { done: number; total: number }) => void) {
   progressListeners.push(cb);
@@ -42,8 +43,20 @@ export function onIconProgress(cb: (p: { done: number; total: number }) => void)
 }
 
 function notifyProgress() {
-  const p = { done: completedCount, total: totalQueued };
-  progressListeners.forEach(cb => cb(p));
+  // Debounce: at most 1 update per 200ms
+  if (progressTimer) return;
+  progressTimer = setTimeout(() => {
+    progressTimer = null;
+    const p = { done: completedCount, total: Math.max(totalQueued, completedCount) };
+    progressListeners.forEach(cb => cb(p));
+  }, 200);
+}
+
+const batchCallbacks: Array<() => void> = [];
+
+function flushBatch() {
+  const cbs = batchCallbacks.splice(0);
+  cbs.forEach(fn => fn());
 }
 
 export function queueIconLoad(app: { icon_path?: string; name: string; install_path?: string }): Promise<string | null> {
@@ -72,7 +85,7 @@ async function processNext() {
     const item = queue.shift()!;
     processItem(item);
   }
-  if (queue.length === 0 && activeWorkers === 0) busy = false;
+  if (queue.length === 0 && activeWorkers === 0) { busy = false; flushBatch(); }
 }
 
 async function processItem(item: typeof queue[0]) {
@@ -85,13 +98,16 @@ async function processItem(item: typeof queue[0]) {
       installDir: item.app.install_path || null,
     });
     iconCache.set(item.app.name, b64);
-    item.resolve(b64);
+    batchCallbacks.push(() => item.resolve(b64));
   } catch {
     iconCache.set(item.app.name, null);
-    item.resolve(null);
+    batchCallbacks.push(() => item.resolve(null));
   }
   completedCount++;
   activeWorkers--;
   notifyProgress();
+
+  // Batch resolve: every 3 completions or when queue is done
+  if (batchCallbacks.length >= 3 || queue.length === 0) flushBatch();
   processNext();
 }

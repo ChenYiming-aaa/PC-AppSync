@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, memo } from 'react';
 import { openUrl, queueIconLoad } from '../api/scanner';
 import { categorizeApp, getAppIconUrl } from '../utils/categorize';
 
@@ -13,7 +13,7 @@ interface Props {
   install_path?: string;
 }
 
-export function AppCard({ name, version, source, downloadUrl, matched, onSearch, icon_path, install_path }: Props) {
+export const AppCard = memo(function AppCard({ name, version, source, downloadUrl, matched, onSearch, icon_path, install_path }: Props) {
   const { icon: fallbackIcon, category } = categorizeApp(name);
   const [iconSrc, setIconSrc] = useState<string | null>(null);
   const [imgError, setImgError] = useState(false);
@@ -77,4 +77,4 @@ export function AppCard({ name, version, source, downloadUrl, matched, onSearch,
       </div>
     </div>
   );
-}
+});
