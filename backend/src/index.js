@@ -19,24 +19,18 @@ app.use('/api/v1/auth', authRoutes);
 app.use('/api/v1/inventories', inventoryRoutes);
 app.use('/api/v1/downloads', downloadRoutes);
 
-app.get('/api/v1/health', async (req, res) => {
+app.get('/api/v1/health', (req, res) => {
   try {
-    await db.healthCheck();
+    db.query('SELECT 1');
     res.json({ status: 'ok', db: 'connected' });
-  } catch (err) {
+  } catch {
     res.status(503).json({ status: 'error', db: 'disconnected' });
   }
 });
 
-app.listen(config.port, async () => {
+app.listen(config.port, () => {
   console.log(`AppSync API running on port ${config.port}`);
-  try {
-    await db.healthCheck();
-    console.log('Database connected');
-  } catch (err) {
-    console.error('Database connection failed:', err.message);
-    process.exit(1);
-  }
+  console.log('Database: SQLite (appsync.db)');
 });
 
 process.on('uncaughtException', (err) => {
@@ -48,8 +42,8 @@ process.on('unhandledRejection', (err) => {
   console.error('Unhandled rejection:', err);
 });
 
-process.on('SIGTERM', async () => {
+process.on('SIGTERM', () => {
   console.log('SIGTERM received, shutting down...');
-  await db.pool.end();
+  db.close();
   process.exit(0);
 });
