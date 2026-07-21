@@ -36,20 +36,25 @@ pub fn get_app_icon(exe_path: String) -> Result<Option<String>, String> {
     if !std::path::Path::new(&clean).exists() {
         return Ok(None);
     }
-    // Use a simple .NET script that works even when ExtractAssociatedIcon fails
+    // Extract icon via PowerShell, clean 32bpp ARGB to avoid libpng tRNS warning
     let script = format!(
         "Add-Type -AssemblyName System.Drawing; \
          try {{ \
            $i = [System.Drawing.Icon]::ExtractAssociatedIcon('{}'); \
+           $bmp32 = New-Object System.Drawing.Bitmap 32,32; \
+           $g = [System.Drawing.Graphics]::FromImage($bmp32); \
+           $g.DrawIcon($i, 0, 0); \
+           $g.Dispose(); \
            $ms = New-Object System.IO.MemoryStream; \
-           $i.ToBitmap().Save($ms, [System.Drawing.Imaging.ImageFormat]::Png); \
+           $bmp32.Save($ms, [System.Drawing.Imaging.ImageFormat]::Png); \
+           $bmp32.Dispose(); \
            [Convert]::ToBase64String($ms.ToArray()) \
          }} catch {{ \
            try {{ \
-             $bmp = [System.Drawing.Bitmap]::FromFile('{}'); \
-             $ms = New-Object System.IO.MemoryStream; \
-             $bmp.Save($ms, [System.Drawing.Imaging.ImageFormat]::Png); \
-             [Convert]::ToBase64String($ms.ToArray()) \
+             $bmp2 = [System.Drawing.Bitmap]::FromFile('{}'); \
+             $ms2 = New-Object System.IO.MemoryStream; \
+             $bmp2.Save($ms2, [System.Drawing.Imaging.ImageFormat]::Png); \
+             [Convert]::ToBase64String($ms2.ToArray()) \
            }} catch {{ '' }} \
          }}",
         clean.replace('\'', "''"), clean.replace('\'', "''")
