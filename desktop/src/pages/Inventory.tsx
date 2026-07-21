@@ -15,11 +15,14 @@ export function Inventory({ scanResult, onSearchDownload }: Props) {
   const [filterCategory, setFilterCategory] = useState('全部');
   const [showSystem, setShowSystem] = useState(false);
   const iconTriggered = useRef(false);
+  const [iconTick, setIconTick] = useState(0);
   useEffect(() => {
     if (iconTriggered.current || !scanResult) return;
     iconTriggered.current = true;
-    batchLoadIcons(scanResult.applications);
+    batchLoadIcons(scanResult.applications).then(() => setIconTick(t => t + 1));
   }, [scanResult]);
+  // Re-read cache when batch completes
+  const iconFor = (name: string) => { iconTick; return getCachedIcon(name); };
 
   const [collapsed, setCollapsed] = useState<string[]>([]);
   const [subCollapsed, setSubCollapsed] = useState<string[]>([]);
@@ -119,7 +122,7 @@ export function Inventory({ scanResult, onSearchDownload }: Props) {
                       {subOpen && grp.apps.map((app, idx) => (
                         <div key={idx} style={{ paddingLeft: 12 }}>
                           <AppCard name={app.name} version={app.version} source={app.source}
-                            iconSrc={getCachedIcon(app.name)}
+                            iconSrc={iconFor(app.name)}
                             onSearch={() => onSearchDownload(app.name)} />
                         </div>
                       ))}
@@ -129,7 +132,7 @@ export function Inventory({ scanResult, onSearchDownload }: Props) {
                 {/* Standalone apps in this category */}
                 {standalone.map((app, idx) => (
                   <AppCard key={'s' + idx} name={app.name} version={app.version} source={app.source}
-                    iconSrc={getCachedIcon(app.name)}
+                    iconSrc={iconFor(app.name)}
                     onSearch={() => onSearchDownload(app.name)} />
                 ))}
               </div>

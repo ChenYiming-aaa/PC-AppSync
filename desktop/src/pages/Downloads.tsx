@@ -65,11 +65,13 @@ export function Downloads({ scanResult }: Props) {
   };
 
   const iconLoaded = useRef(false);
+  const [iconTick, setIconTick] = useState(0);
   useEffect(() => {
     if (iconLoaded.current || !scanResult) return;
     iconLoaded.current = true;
-    batchLoadIcons(scanResult.applications);
+    batchLoadIcons(scanResult.applications).then(() => setIconTick(t => t + 1));
   }, [scanResult]);
+  const iconFor = (name: string) => { iconTick; return getCachedIcon(name); };
 
   if (!scanResult) return <p>No scan data. Run a scan first.</p>;
 
@@ -107,7 +109,7 @@ export function Downloads({ scanResult }: Props) {
           <p style={{ color: '#2e7d32', fontSize: 13, margin: '8px 0' }}>--- Matched (Auto-link) ---</p>
           {matched.map((app, i) => (
             <AppCard key={i} name={app.name} version={app.version}
-              iconSrc={getCachedIcon(app.name)}
+              iconSrc={iconFor(app.name)}
               downloadUrl={links[app.name]?.official_url} matched={true} />
           ))}
         </>
@@ -118,7 +120,7 @@ export function Downloads({ scanResult }: Props) {
           <p style={{ color: '#c62828', fontSize: 13, margin: '8px 0' }}>--- Unmatched (Search Required) ---</p>
           {unmatched.map((app, i) => (
             <AppCard key={i} name={app.name} version={app.version}
-              iconSrc={getCachedIcon(app.name)} matched={false}
+              iconSrc={iconFor(app.name)} matched={false}
               onSearch={() => handleSearch(app.name)} />
           ))}
         </>
