@@ -17,9 +17,9 @@ router.get('/search', async (req, res) => {
     const r = db.query(
       `SELECT id, software_name, aliases, official_url, direct_download_url, category, verified, contributor_id
        FROM download_links
-       WHERE LOWER(software_name) LIKE LOWER(?) OR ? = ANY(json_extract(aliases, '$'))
+       WHERE LOWER(software_name) LIKE LOWER(?) OR LOWER(aliases) LIKE LOWER(?)
        ORDER BY verified DESC, software_name ASC LIMIT 20`,
-      [`%${q}%`, q]
+      [`%${q}%`, `%${q}%`]
     );
     r.rows.forEach(row => {
       row.verified = !!row.verified;
