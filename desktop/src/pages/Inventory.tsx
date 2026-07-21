@@ -1,7 +1,7 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import type { ScanResult, Application } from '../types';
 import { AppCard } from '../components/AppCard';
-
+import { api } from '../api/client';
 import { categorizeApp, CATEGORIES, findAppGroup, isSystemApp } from '../utils/categorize';
 
 interface Props {
@@ -9,7 +9,9 @@ interface Props {
   onSearchDownload: (name: string) => void;
 }
 
-export function Inventory({ scanResult, onSearchDownload }: Props) {
+export function Inventory({ scanResult: initialScan, onSearchDownload }: Props) {
+  const [scanResult, setScanResult] = useState(initialScan);
+  useEffect(() => setScanResult(initialScan), [initialScan]);
   const [search, setSearch] = useState('');
   const [filterCategory, setFilterCategory] = useState('全部');
   const [showSystem, setShowSystem] = useState(false);
@@ -69,7 +71,12 @@ export function Inventory({ scanResult, onSearchDownload }: Props) {
     <div>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
         <h2>Software Inventory</h2>
-        <button onClick={() => window.location.reload()} style={{ fontSize: 12, padding: '4px 12px', cursor: 'pointer' }}>Refresh</button>
+        <button onClick={async () => {
+          try {
+            const res = await api.getLatestInventory();
+            if (res?.scan_data) setScanResult(res.scan_data);
+          } catch { /* ignore */ }
+        }} style={{ fontSize: 12, padding: '4px 12px', cursor: 'pointer' }}>Refresh</button>
       </div>
       <div style={{ display: 'flex', gap: 8, marginBottom: 14 }}>
         <input type="text" placeholder="Search software..." value={search}

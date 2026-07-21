@@ -9,7 +9,9 @@ interface Props {
   scanResult: ScanResult | null;
 }
 
-export function Downloads({ scanResult }: Props) {
+export function Downloads({ scanResult: initialScan }: Props) {
+  const [scanResult, setScanResult] = useState(initialScan);
+  useEffect(() => setScanResult(initialScan), [initialScan]);
   const [links, setLinks] = useState<Record<string, DownloadLink>>({});
   const [filter, setFilter] = useState<'all' | 'matched' | 'unmatched'>('all');
   const [search, setSearch] = useState('');
@@ -118,7 +120,12 @@ export function Downloads({ scanResult }: Props) {
     <div>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
         <h2>Downloads</h2>
-        <button onClick={() => window.location.reload()} style={{ fontSize: 12, padding: '4px 12px', cursor: 'pointer' }}>Refresh</button>
+        <button onClick={async () => {
+          try {
+            const res = await api.getLatestInventory();
+            if (res?.scan_data) setScanResult(res.scan_data);
+          } catch { /* ignore */ }
+        }} style={{ fontSize: 12, padding: '4px 12px', cursor: 'pointer' }}>Refresh</button>
       </div>
 
       {/* Cross-device comparison selector */}
