@@ -25,12 +25,6 @@ pub fn scan_deep() -> Result<scanner::ScanResult, String> {
     result.deep_scan = Some(scanner::deep_scan::run_deep_scan());
     Ok(result)
 }
-#[derive(serde::Serialize, serde::Deserialize)]
-pub struct IconEntry {
-    pub name: String,
-    pub display_icon: String,
-    pub install_dir: String,
-}
 
 #[tauri::command]
 pub fn export_scan(data: String, file_path: String) -> Result<(), String> {
