@@ -6,126 +6,85 @@ export function Admin() {
   const [pending, setPending] = useState<any[]>([]);
   const [users, setUsers] = useState<any[]>([]);
   const [msg, setMsg] = useState('');
-  const [isAdmin, setIsAdmin] = useState(false);
 
   useEffect(() => {
     api.getProfile().then(user => {
       if (!user.is_admin) { setMsg('Admin access only'); return; }
-      setIsAdmin(true);
-      fetchPending();
+      loadPending();
     }).catch(() => setMsg('Not logged in'));
   }, []);
 
-  const fetchPending = async () => {
+  const loadPending = async () => {
     try { setPending(await api.getPendingLinks()); }
-    catch { setMsg('Failed to load pending links'); }
+    catch { setMsg('Failed to load'); }
   };
 
-  const fetchUsers = async () => {
+  const loadUsers = async () => {
     try {
       const token = localStorage.getItem('appsync_token');
       const res = await fetch('http://localhost:3000/api/v1/auth/users', {
         headers: { 'Authorization': 'Bearer ' + token }
       });
       if (res.ok) setUsers(await res.json());
-    } catch { setMsg('Failed to load users'); }
+    } catch { setMsg('Failed to load'); }
   };
 
-  const handleVerify = async (id: number, verified: boolean) => {
-    try {
-      await api.verifyLink(id, verified);
-      setPending(prev => prev.filter((l: any) => l.id !== id));
-    } catch (err: any) { setMsg('Error: ' + err.message); }
+  const verify = async (id: number, ok: boolean) => {
+    try { await api.verifyLink(id, ok); setPending(p => p.filter((x: any) => x.id !== id)); }
+    catch (e: any) { setMsg(e.message); }
   };
 
-  const handleToggleAdmin = async (userId: number, makeAdmin: boolean) => {
+  const toggleAdmin = async (id: number, make: boolean) => {
     try {
       const token = localStorage.getItem('appsync_token');
-      const res = await fetch('http://localhost:3000/api/v1/auth/users/' + userId + '/admin', {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token },
-        body: JSON.stringify({ is_admin: makeAdmin }),
+      const r = await fetch('http://localhost:3000/api/v1/auth/users/' + id + '/admin', {
+        method: 'PUT', headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token },
+        body: JSON.stringify({ is_admin: make })
       });
-      if (res.ok) {
-        setUsers(prev => prev.map((u: any) => u.id === userId ? { ...u, is_admin: makeAdmin } : u));
-      } else {
-        const err = await res.json();
-        setMsg(err.error || 'Failed');
-      }
-    } catch (err: any) { setMsg('Error: ' + err.message); }
+      if (r.ok) setUsers((u: any[]) => u.map(x => x.id === id ? { ...x, is_admin: make } : x));
+      else setMsg((await r.json()).error);
+    } catch (e: any) { setMsg(e.message); }
   };
 
-  const handleDeleteUser = async (userId: number) => {
-    if (!confirm('Delete this user and all their data? This cannot be undone.')) return;
+  const delUser = async (id: number) => {
+    if (!confirm('Delete this user?')) return;
     try {
       const token = localStorage.getItem('appsync_token');
-      const res = await fetch('http://localhost:3000/api/v1/auth/users/' + userId, {
-        method: 'DELETE',
-        headers: { 'Authorization': 'Bearer ' + token },
+      const r = await fetch('http://localhost:3000/api/v1/auth/users/' + id, {
+        method: 'DELETE', headers: { 'Authorization': 'Bearer ' + token }
       });
-      if (res.ok) {
-        setUsers(prev => prev.filter((u: any) => u.id !== userId));
-      } else {
-        const err = await res.json();
-        setMsg(err.error || 'Failed');
-      }
-    } catch (err: any) { setMsg('Error: ' + err.message); }
+      if (r.ok) setUsers((u: any[]) => u.filter(x => x.id !== id));
+      else setMsg((await r.json()).error);
+    } catch (e: any) { setMsg(e.message); }
   };
-
-  if (!isAdmin) {
-    return <div><h2>Admin</h2>{msg && <p style={{ color: '#c62828' }}>{msg}</p>}</div>;
-  }
 
   return (
     <div>
-      <h2>Admin Panel</h2>
-      <div style={{ display: 'flex', gap: 8, marginBottom: 16 }}>
+      <h2>Admin</h2>
+      {msg && <p style={{ color: '#c62828', fontSize: 13 }}>{msg}</p>}
+
+      <div style={{ display: 'flex', gap: 6, marginBottom: 16 }}>
         <button onClick={() => setTab('review')}
-          style={{ padding: '6px 20px', cursor: 'pointer', fontWeight: tab === 'review' ? 'bold' : 'normal',
-            background: tab === 'review' ? '#e0e0e0' : 'transparent', border: '1px solid #ccc', borderRadius: 6 }}>
-          Link Review {pending.length > 0 && `(${pending.length})`}
+          style={{ fontWeight: tab === 'review' ? 'bold' : 'normal', padding: '4px 16px', cursor: 'pointer', borderRadius: 4, border: '1px solid #ccc' }}>
+          Pending ({pending.length})
         </button>
-        <button onClick={() => { setTab('users'); fetchUsers(); }}
-          style={{ padding: '6px 20px', cursor: 'pointer', fontWeight: tab === 'users' ? 'bold' : 'normal',
-            background: tab === 'users' ? '#e0e0e0' : 'transparent', border: '1px solid #ccc', borderRadius: 6 }}>
-          User Management
+        <button onClick={() => { setTab('users'); loadUsers(); }}
+          style={{ fontWeight: tab === 'users' ? 'bold' : 'normal', padding: '4px 16px', cursor: 'pointer', borderRadius: 4, border: '1px solid #ccc' }}>
+          Users
         </button>
       </div>
 
-      {msg && <p style={{ color: '#c62828', fontSize: 13 }}>{msg}</p>}
-
       {tab === 'review' && (
         <div>
-          <h3 style={{ fontSize: 16, marginBottom: 12 }}>Pending Download Links</h3>
           {pending.length === 0 && <p style={{ color: '#999' }}>No pending submissions.</p>}
           {pending.map((link: any) => (
-            <div key={link.id} style={{ border: '1px solid #ddd', borderRadius: 8, padding: 12, marginBottom: 8 }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                <div>
-                  <strong>{link.software_name}</strong>
-                  <span style={{ marginLeft: 8, fontSize: 11, color: '#999', background: '#f0f0f0', padding: '1px 6px', borderRadius: 3 }}>
-                    {link.category || 'uncategorized'}
-                  </span>
-                </div>
-                <span style={{ fontSize: 11, color: '#999' }}>
-                  {link.contributor_email ? 'by ' + link.contributor_email : 'anonymous'}
-                </span>
-              </div>
-              <div style={{ fontSize: 12, color: '#666', marginTop: 4, wordBreak: 'break-all' }}>
-                {link.official_url}
-              </div>
-              {link.aliases && link.aliases.length > 0 && (
-                <div style={{ fontSize: 11, color: '#999', marginTop: 2 }}>Aliases: {link.aliases.join(', ')}</div>
-              )}
-              <div style={{ marginTop: 8, display: 'flex', gap: 8 }}>
-                <button onClick={() => handleVerify(link.id, true)}
-                  style={{ cursor: 'pointer', padding: '4px 16px', background: '#2e7d32', color: '#fff', border: 'none', borderRadius: 4 }}>
-                  Approve
-                </button>
-                <button onClick={() => handleVerify(link.id, false)}
-                  style={{ cursor: 'pointer', padding: '4px 16px', background: '#c62828', color: '#fff', border: 'none', borderRadius: 4 }}>
-                  Reject
-                </button>
+            <div key={link.id} style={{ border: '1px solid #ddd', borderRadius: 8, padding: 10, marginBottom: 6 }}>
+              <div><strong>{link.software_name}</strong></div>
+              <div style={{ fontSize: 12, color: '#666', wordBreak: 'break-all' }}>{link.official_url}</div>
+              <div style={{ fontSize: 11, color: '#999' }}>{link.category} | by {link.contributor_email || 'anonymous'}</div>
+              <div style={{ marginTop: 6, display: 'flex', gap: 6 }}>
+                <button onClick={() => verify(link.id, true)} style={{ padding: '2px 12px', cursor: 'pointer', background: '#2e7d32', color: '#fff', border: 'none', borderRadius: 3 }}>Approve</button>
+                <button onClick={() => verify(link.id, false)} style={{ padding: '2px 12px', cursor: 'pointer', background: '#c62828', color: '#fff', border: 'none', borderRadius: 3 }}>Reject</button>
               </div>
             </div>
           ))}
@@ -134,44 +93,20 @@ export function Admin() {
 
       {tab === 'users' && (
         <div>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
-            <h3 style={{ fontSize: 16, margin: 0 }}>Users</h3>
-            <button onClick={fetchUsers} style={{ fontSize: 12, padding: '3px 10px', cursor: 'pointer' }}>Refresh</button>
-          </div>
-          {users.length === 0 && <p style={{ color: '#999' }}>No users found.</p>}
-          {users.map((user: any) => (
-            <div key={user.id} style={{
-              border: '1px solid #eee', borderRadius: 8, padding: '10px 14px', marginBottom: 6,
-              display: 'flex', justifyContent: 'space-between', alignItems: 'center'
-            }}>
+          {users.length === 0 && <p style={{ color: '#999' }}>No users.</p>}
+          {users.map((u: any) => (
+            <div key={u.id} style={{ border: '1px solid #eee', borderRadius: 8, padding: '8px 12px', marginBottom: 4, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
               <div>
-                <strong>{user.nickname || user.email}</strong>
-                <span style={{ marginLeft: 8, color: '#666', fontSize: 13 }}>{user.email}</span>
-                {user.is_admin && (
-                  <span style={{ marginLeft: 6, fontSize: 11, color: '#fff', background: '#1976d2', padding: '1px 8px', borderRadius: 3 }}>
-                    Admin
-                  </span>
-                )}
-                <div style={{ fontSize: 11, color: '#999', marginTop: 2 }}>
-                  Registered: {new Date(user.created_at).toLocaleDateString()} | Inventories: {user.inventory_count || 0}
-                </div>
+                <strong>{u.nickname || u.email}</strong>
+                <span style={{ marginLeft: 6, color: '#666', fontSize: 13 }}>{u.email}</span>
+                {u.is_admin && <span style={{ marginLeft: 4, fontSize: 11, background: '#1976d2', color: '#fff', padding: '1px 6px', borderRadius: 3 }}>Admin</span>}
+                <div style={{ fontSize: 11, color: '#999' }}>ID: {u.id} | Inventories: {u.inventory_count || 0}</div>
               </div>
-              <div style={{ display: 'flex', gap: 6 }}>
-                {user.is_admin ? (
-                  <button onClick={() => handleToggleAdmin(user.id, false)}
-                    style={{ fontSize: 11, padding: '2px 8px', cursor: 'pointer' }}>
-                    Demote
-                  </button>
-                ) : (
-                  <button onClick={() => handleToggleAdmin(user.id, true)}
-                    style={{ fontSize: 11, padding: '2px 8px', cursor: 'pointer' }}>
-                    Make Admin
-                  </button>
-                )}
-                <button onClick={() => handleDeleteUser(user.id)}
-                  style={{ fontSize: 11, padding: '2px 8px', cursor: 'pointer', color: '#c62828' }}>
-                  Delete
+              <div style={{ display: 'flex', gap: 4 }}>
+                <button onClick={() => toggleAdmin(u.id, !u.is_admin)} style={{ fontSize: 11, padding: '2px 8px', cursor: 'pointer' }}>
+                  {u.is_admin ? 'Demote' : 'Make Admin'}
                 </button>
+                <button onClick={() => delUser(u.id)} style={{ fontSize: 11, padding: '2px 8px', cursor: 'pointer', color: '#c62828' }}>Delete</button>
               </div>
             </div>
           ))}
