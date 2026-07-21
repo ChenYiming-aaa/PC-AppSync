@@ -1,6 +1,7 @@
 import { useState, useMemo } from 'react';
 import type { ScanResult, Application } from '../types';
 import { AppCard } from '../components/AppCard';
+import { IconLoadProgress } from '../components/IconLoadProgress';
 import { categorizeApp, CATEGORIES, findAppGroup, isSystemApp } from '../utils/categorize';
 
 interface Props {
@@ -77,6 +78,7 @@ export function Inventory({ scanResult, onSearchDownload }: Props) {
           <option value="其他">📦 Other</option>
         </select>
       </div>
+      <IconLoadProgress />
       <label style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 10, fontSize: 13, cursor: 'pointer' }}>
         <input type="checkbox" checked={showSystem} onChange={e => setShowSystem(e.target.checked)} />
         Show system components

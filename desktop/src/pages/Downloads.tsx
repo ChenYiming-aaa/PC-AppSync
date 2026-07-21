@@ -1,6 +1,7 @@
 import { useState, useEffect, useMemo } from 'react';
 import type { ScanResult, DownloadLink } from '../types';
 import { AppCard } from '../components/AppCard';
+import { IconLoadProgress } from '../components/IconLoadProgress';
 import { api } from '../api/client';
 import { openUrl } from '../api/scanner';
 import { categorizeApp, CATEGORIES } from '../utils/categorize';
@@ -79,6 +80,7 @@ export function Downloads({ scanResult }: Props) {
           <option value="其他">📦 Other</option>
         </select>
       </div>
+      <IconLoadProgress />
       <div style={{ display: 'flex', gap: 6, marginBottom: 14 }}>
         {(['all', 'matched', 'unmatched'] as const).map(f => (
           <button key={f} onClick={() => setFilter(f)}
