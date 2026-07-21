@@ -73,7 +73,7 @@ export function Dashboard({ lastScan, onScanComplete }: Props) {
         <div style={{ display: 'flex', gap: 6 }}>
           {lastScan && <button onClick={() => {
             const script = generateInstallScript(lastScan);
-            if (script.startsWith('#')) { alert(script); return; }
+            if (script.startsWith('#')) { alert('No Python or Node.js packages found in scan data.'); return; }
             saveFile(script, 'restore-packages.ps1');
           }} style={{ fontSize: 12 }}>Script</button>}
           {lastScan && <button onClick={handleExport} style={{ fontSize: 12 }}>Export</button>}
