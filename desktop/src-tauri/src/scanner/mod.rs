@@ -3,7 +3,7 @@ pub mod package_managers;
 pub mod runtimes;
 pub mod deep_scan;
 
-use serde::Serialize;
+use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Serialize)]
 pub struct OsInfo {
@@ -24,7 +24,7 @@ pub struct Application {
     pub install_date: Option<String>,
 }
 
-#[derive(Debug, Serialize)]
+#[derive(Debug, Serialize, Deserialize)]
 pub struct Package {
     pub name: String,
     pub version: String,

@@ -28,3 +28,19 @@ pub fn scan_deep() -> Result<scanner::ScanResult, String> {
     result.deep_scan = Some(scanner::deep_scan::run_deep_scan());
     Ok(result)
 }
+
+#[tauri::command]
+pub fn export_scan(data: String, file_path: String) -> Result<(), String> {
+    std::fs::write(&file_path, &data)
+        .map_err(|e| format!("Failed to write file: {}", e))?;
+    Ok(())
+}
+
+#[tauri::command]
+pub fn open_url(url: String) -> Result<(), String> {
+    std::process::Command::new("cmd")
+        .args(["/c", "start", "", &url])
+        .spawn()
+        .map_err(|e| format!("Failed to open URL: {}", e))?;
+    Ok(())
+}

@@ -3,6 +3,7 @@ const cors = require('cors');
 const config = require('./config');
 const db = require('./db');
 const authRoutes = require('./routes/auth');
+const inventoryRoutes = require('./routes/inventories');
 const downloadRoutes = require('./routes/downloads');
 
 const app = express();
@@ -11,6 +12,7 @@ app.use(cors());
 app.use(express.json({ limit: '10mb' }));
 
 app.use('/api/v1/auth', authRoutes);
+app.use('/api/v1/inventories', inventoryRoutes);
 app.use('/api/v1/downloads', downloadRoutes);
 
 app.get('/api/v1/health', async (req, res) => {

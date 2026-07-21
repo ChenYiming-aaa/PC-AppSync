@@ -8,6 +8,8 @@ pub fn run() {
         .invoke_handler(tauri::generate_handler![
             commands::scan_standard,
             commands::scan_deep,
+            commands::open_url,
+            commands::export_scan,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
