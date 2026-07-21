@@ -28,52 +28,44 @@ export function getScanExportData(result: ScanResult): { json: string; csv: stri
   return { json, csv };
 }
 
-// ---- Batch icon extraction: ONE PowerShell call for ALL apps ----
+// ---- Batch icon extraction ----
 
-const iconCache = new Map<string, string | null>();
-const progressListeners: Array<(p: { done: number; total: number }) => void> = [];
+export async function batchLoadIcons(apps: { name: string; icon_path?: string; install_path?: string }[]): Promise<Record<string, string | null>> {
+  const result: Record<string, string | null> = {};
 
-export function onIconProgress(cb: (p: { done: number; total: number }) => void) {
-  progressListeners.push(cb);
-  return () => { const i = progressListeners.indexOf(cb); if (i >= 0) progressListeners.splice(i, 1); };
-}
+  // Apps with CDN icons
+  for (const a of apps) {
+    const cdn = getAppIconUrl(a.name);
+    if (cdn) { result[a.name] = cdn; }
+  }
 
-export async function batchLoadIcons(apps: { name: string; icon_path?: string; install_path?: string }[]): Promise<void> {
-  // Collect apps that need extraction (no CDN, no cache)
+  // Apps needing extraction
   const toExtract = apps.filter(a => {
-    if (iconCache.has(a.name)) return false;
-    if (getAppIconUrl(a.name)) { iconCache.set(a.name, ''); return false; } // CDN available
-    if (!a.icon_path && !a.install_path) { iconCache.set(a.name, ''); return false; }
+    if (result[a.name] !== undefined) return false;
+    if (!a.icon_path && !a.install_path) { result[a.name] = null; return false; }
     return true;
   });
-  if (toExtract.length === 0) return;
 
-  const total = toExtract.length;
-  progressListeners.forEach(cb => cb({ done: 0, total }));
-
-  try {
-    const entries = toExtract.map(a => ({
-      name: a.name,
-      display_icon: a.icon_path || '',
-      install_dir: a.install_path || '',
-    }));
-    const raw = await invoke<string>('batch_get_icons', { entries });
-    // Clean BOM and any non-JSON prefix
-    let json = raw.trim();
-    if (json.charCodeAt(0) === 0xFEFF) json = json.slice(1); // UTF-8 BOM
-    const braceIdx = json.indexOf('{');
-    if (braceIdx > 0) json = json.slice(braceIdx);
-    const results = JSON.parse(json);
-    for (const name of Object.keys(results)) {
-      iconCache.set(name, results[name] || null);
+  if (toExtract.length > 0) {
+    try {
+      const entries = toExtract.map(a => ({
+        name: a.name,
+        display_icon: a.icon_path || '',
+        install_dir: a.install_path || '',
+      }));
+      const raw = await invoke<string>('batch_get_icons', { entries });
+      const parsed = JSON.parse(raw);
+      for (const name of Object.keys(parsed)) {
+        result[name] = parsed[name] || null;
+      }
+      for (const a of toExtract) {
+        if (result[a.name] === undefined) result[a.name] = null;
+      }
+    } catch (err) {
+      console.error('icon extraction error:', err);
+      toExtract.forEach(a => { result[a.name] = null; });
     }
-  } catch (err) {
-    console.error('batch icon extraction failed:', err);
-    toExtract.forEach(a => iconCache.set(a.name, null));
   }
-  progressListeners.forEach(cb => cb({ done: total, total }));
-}
 
-export function getCachedIcon(name: string): string | null | undefined {
-  return iconCache.get(name);
+  return result;
 }

@@ -3,7 +3,7 @@ import type { ScanResult, DownloadLink } from '../types';
 import { AppCard } from '../components/AppCard';
 import { IconLoadProgress } from '../components/IconLoadProgress';
 import { api } from '../api/client';
-import { openUrl, batchLoadIcons, getCachedIcon } from '../api/scanner';
+import { openUrl, batchLoadIcons } from '../api/scanner';
 import { categorizeApp, CATEGORIES } from '../utils/categorize';
 
 interface Props {
@@ -15,6 +15,14 @@ export function Downloads({ scanResult }: Props) {
   const [filter, setFilter] = useState<'all' | 'matched' | 'unmatched'>('all');
   const [search, setSearch] = useState('');
   const [categoryFilter, setCategoryFilter] = useState('全部');
+  const [iconMap, setIconMap] = useState<Record<string, string | null>>({});
+  const loaded = useRef(false);
+
+  useEffect(() => {
+    if (loaded.current || !scanResult) return;
+    loaded.current = true;
+    batchLoadIcons(scanResult.applications).then(setIconMap);
+  }, [scanResult]);
 
   useEffect(() => {
     if (!scanResult) return;
@@ -64,15 +72,6 @@ export function Downloads({ scanResult }: Props) {
     }
   };
 
-  const iconLoaded = useRef(false);
-  const [iconTick, setIconTick] = useState(0);
-  useEffect(() => {
-    if (iconLoaded.current || !scanResult) return;
-    iconLoaded.current = true;
-    batchLoadIcons(scanResult.applications).then(() => setIconTick(t => t + 1));
-  }, [scanResult]);
-  const iconFor = (name: string) => { iconTick; return getCachedIcon(name); };
-
   if (!scanResult) return <p>No scan data. Run a scan first.</p>;
 
   return (
@@ -109,7 +108,7 @@ export function Downloads({ scanResult }: Props) {
           <p style={{ color: '#2e7d32', fontSize: 13, margin: '8px 0' }}>--- Matched (Auto-link) ---</p>
           {matched.map((app, i) => (
             <AppCard key={i} name={app.name} version={app.version}
-              iconSrc={iconFor(app.name)}
+              iconSrc={iconMap[app.name]}
               downloadUrl={links[app.name]?.official_url} matched={true} />
           ))}
         </>
@@ -120,7 +119,7 @@ export function Downloads({ scanResult }: Props) {
           <p style={{ color: '#c62828', fontSize: 13, margin: '8px 0' }}>--- Unmatched (Search Required) ---</p>
           {unmatched.map((app, i) => (
             <AppCard key={i} name={app.name} version={app.version}
-              iconSrc={iconFor(app.name)} matched={false}
+              iconSrc={iconMap[app.name]} matched={false}
               onSearch={() => handleSearch(app.name)} />
           ))}
         </>

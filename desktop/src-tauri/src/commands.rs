@@ -26,50 +26,54 @@ pub fn scan_deep() -> Result<scanner::ScanResult, String> {
     Ok(result)
 }
 
-/// Batch extract icons for multiple apps in ONE PowerShell call, returns JSON map
+/// Batch extract icons - uses one PowerShell call, returns JSON with stderr on error
 #[tauri::command]
 pub fn batch_get_icons(entries: Vec<IconEntry>) -> Result<String, String> {
-    // Build PowerShell script that processes all icons at once
     let json = serde_json::to_string(&entries).unwrap_or_default();
-    let script = format!(r#"
+
+    // Write JSON and PS script to temp files to avoid escaping issues
+    let json_path = std::env::temp_dir().join("appsync_icon_entries.json");
+    std::fs::write(&json_path, &json).ok();
+    let script_path = std::env::temp_dir().join("appsync_icon_extract.ps1");
+    let ps_code = format!(
+        r#"$ErrorActionPreference='Stop'
+$json = Get-Content '{}' -Raw
 Add-Type -AssemblyName System.Drawing
-$list = '{0}' | ConvertFrom-Json
+$list = $json | ConvertFrom-Json
 $result = @{{}}
-$ErrorActionPreference = 'SilentlyContinue'
 foreach ($e in $list) {{
-    $name = $e.name
-    $candidates = @()
-    if ($e.display_icon) {{ $candidates += ($e.display_icon -replace ',.*$','') }}
-    if ($e.install_dir -and (Test-Path $e.install_dir)) {{
-        Get-ChildItem $e.install_dir -Filter *.exe -ErrorAction SilentlyContinue | ForEach-Object {{ $candidates += $_.FullName }}
+    $name=$e.name
+    $cand=@()
+    if($e.display_icon){{$cand+=($e.display_icon -replace ',.*$','')}}
+    if($e.install_dir -and (Test-Path $e.install_dir)){{Get-ChildItem $e.install_dir -Filter *.exe|%%{{$cand+=$_.FullName}}}}
+    foreach($p in $cand){{
+        if(-not (Test-Path $p)){{continue}}
+        try{{$ico=[Drawing.Icon]::ExtractAssociatedIcon($p);if(-not$ico){{continue}};$b=New-Object Drawing.Bitmap 32,32;$g=[Drawing.Graphics]::FromImage($b);$g.DrawIcon($ico,0,0);$g.Dispose();$m=New-Object IO.MemoryStream;$b.Save($m,[Drawing.Imaging.ImageFormat]::Png);$result[$name]=[Convert]::ToBase64String($m.ToArray());$b.Dispose();break}}catch{{}}
     }}
-    $found = $false
-    foreach ($p in $candidates) {{
-        if (-not (Test-Path $p)) {{ continue }}
-        try {{
-            $ico = [System.Drawing.Icon]::ExtractAssociatedIcon($p)
-            if (-not $ico) {{ continue }}
-            $bmp = New-Object System.Drawing.Bitmap 32,32
-            $g = [System.Drawing.Graphics]::FromImage($bmp)
-            $g.DrawIcon($ico,0,0); $g.Dispose()
-            $ms = New-Object System.IO.MemoryStream
-            $bmp.Save($ms, [System.Drawing.Imaging.ImageFormat]::Png)
-            $result[$name] = [Convert]::ToBase64String($ms.ToArray())
-            $bmp.Dispose()
-            $found = $true
-            break
-        }} catch {{ }}
-    }}
-    if (-not $found) {{ $result[$name] = '' }}
+    if(-not$result.ContainsKey($name)){{$result[$name]=''}}
 }}
-ConvertTo-Json $result -Compress -Depth 10
-"#, json.replace('\'', "''"));
+Write-Output (ConvertTo-Json $result -Compress -Depth 10)"#,
+        json_path.to_string_lossy().replace('\'', "''")
+    );
+
+    std::fs::write(&script_path, &ps_code).ok();
 
     let out = std::process::Command::new("powershell")
-        .args(["-NoProfile", "-NonInteractive", "-Command", &script])
+        .args(["-NoProfile", "-NonInteractive", "-ExecutionPolicy", "Bypass", "-File", &script_path.to_string_lossy()])
         .output().map_err(|e| e.to_string())?;
 
-    Ok(String::from_utf8_lossy(&out.stdout).trim().to_string())
+    let stdout = String::from_utf8_lossy(&out.stdout).trim().to_string();
+    let stderr = String::from_utf8_lossy(&out.stderr).trim().to_string();
+
+    // Clean up temp files
+    std::fs::remove_file(&json_path).ok();
+    std::fs::remove_file(&script_path).ok();
+
+    if !out.status.success() {
+        return Err(format!("PowerShell failed: {}", stderr));
+    }
+
+    Ok(stdout)
 }
 
 #[derive(serde::Serialize, serde::Deserialize)]

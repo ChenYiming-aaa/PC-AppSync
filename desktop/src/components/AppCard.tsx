@@ -1,6 +1,6 @@
 import { useState, memo } from 'react';
-import { openUrl, getCachedIcon } from '../api/scanner';
-import { categorizeApp, getAppIconUrl } from '../utils/categorize';
+import { openUrl } from '../api/scanner';
+import { categorizeApp } from '../utils/categorize';
 
 interface Props {
   name: string;
@@ -15,14 +15,7 @@ interface Props {
 export const AppCard = memo(function AppCard({ name, version, source, downloadUrl, matched, onSearch, iconSrc }: Props) {
   const { icon: fallbackIcon, category } = categorizeApp(name);
   const [imgError, setImgError] = useState(false);
-
-  // iconSrc from parent > CDN > emoji
-  const finalSrc = iconSrc !== undefined ? iconSrc : (getCachedIcon(name) || getAppIconUrl(name));
-  const showImg = finalSrc && !imgError;
-
-  const handleDownload = () => {
-    if (downloadUrl) openUrl(downloadUrl);
-  };
+  const showImg = iconSrc && !imgError;
 
   return (
     <div style={{
@@ -31,7 +24,7 @@ export const AppCard = memo(function AppCard({ name, version, source, downloadUr
     }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: 10, flex: 1 }}>
         {showImg ? (
-          <img src={finalSrc!} alt="" style={{ width: 22, height: 22, borderRadius: 3 }}
+          <img src={iconSrc!} alt="" style={{ width: 22, height: 22, borderRadius: 3 }}
             onError={() => setImgError(true)} />
         ) : (
           <span style={{ fontSize: 18 }}>{fallbackIcon}</span>
@@ -49,7 +42,7 @@ export const AppCard = memo(function AppCard({ name, version, source, downloadUr
       </div>
       <div>
         {downloadUrl ? (
-          <button onClick={handleDownload} style={{ cursor: 'pointer', padding: '4px 14px' }}>
+          <button onClick={() => openUrl(downloadUrl)} style={{ cursor: 'pointer', padding: '4px 14px' }}>
             🟢 Open Download
           </button>
         ) : matched === true ? null : onSearch ? (

@@ -2,7 +2,7 @@ import { useState, useMemo, useEffect, useRef } from 'react';
 import type { ScanResult, Application } from '../types';
 import { AppCard } from '../components/AppCard';
 import { IconLoadProgress } from '../components/IconLoadProgress';
-import { batchLoadIcons, getCachedIcon } from '../api/scanner';
+import { batchLoadIcons } from '../api/scanner';
 import { categorizeApp, CATEGORIES, findAppGroup, isSystemApp } from '../utils/categorize';
 
 interface Props {
@@ -14,22 +14,20 @@ export function Inventory({ scanResult, onSearchDownload }: Props) {
   const [search, setSearch] = useState('');
   const [filterCategory, setFilterCategory] = useState('全部');
   const [showSystem, setShowSystem] = useState(false);
-  const iconTriggered = useRef(false);
-  const [iconTick, setIconTick] = useState(0);
-  useEffect(() => {
-    if (iconTriggered.current || !scanResult) return;
-    iconTriggered.current = true;
-    batchLoadIcons(scanResult.applications).then(() => setIconTick(t => t + 1));
-  }, [scanResult]);
-  // Re-read cache when batch completes
-  const iconFor = (name: string) => { iconTick; return getCachedIcon(name); };
-
   const [collapsed, setCollapsed] = useState<string[]>([]);
   const [subCollapsed, setSubCollapsed] = useState<string[]>([]);
+  const [iconMap, setIconMap] = useState<Record<string, string | null>>({});
+  const loaded = useRef(false);
+
+  useEffect(() => {
+    if (loaded.current || !scanResult) return;
+    loaded.current = true;
+    batchLoadIcons(scanResult.applications).then(setIconMap);
+  }, [scanResult]);
+
   const toggle = (key: string) => setCollapsed(prev => prev.includes(key) ? prev.filter(c => c !== key) : [...prev, key]);
   const toggleSub = (key: string) => setSubCollapsed(prev => prev.includes(key) ? prev.filter(c => c !== key) : [...prev, key]);
 
-  // Structure: category -> { groups: {parentName -> [apps]}, standalone: [apps] }
   const categoryData = useMemo(() => {
     if (!scanResult) return [];
     const catMap = new Map<string, {
@@ -108,7 +106,6 @@ export function Inventory({ scanResult, onSearchDownload }: Props) {
             </div>
             {catOpen && (
               <div style={{ paddingLeft: 12, marginTop: 6 }}>
-                {/* Groups within this category */}
                 {groups.map(grp => {
                   const subOpen = !subCollapsed.includes(grp.name);
                   return (
@@ -122,17 +119,16 @@ export function Inventory({ scanResult, onSearchDownload }: Props) {
                       {subOpen && grp.apps.map((app, idx) => (
                         <div key={idx} style={{ paddingLeft: 12 }}>
                           <AppCard name={app.name} version={app.version} source={app.source}
-                            iconSrc={iconFor(app.name)}
+                            iconSrc={iconMap[app.name]}
                             onSearch={() => onSearchDownload(app.name)} />
                         </div>
                       ))}
                     </div>
                   );
                 })}
-                {/* Standalone apps in this category */}
                 {standalone.map((app, idx) => (
                   <AppCard key={'s' + idx} name={app.name} version={app.version} source={app.source}
-                    iconSrc={iconFor(app.name)}
+                    iconSrc={iconMap[app.name]}
                     onSearch={() => onSearchDownload(app.name)} />
                 ))}
               </div>
