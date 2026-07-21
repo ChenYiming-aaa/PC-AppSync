@@ -4,6 +4,7 @@ import { AppCard } from '../components/AppCard';
 import { api } from '../api/client';
 import { openUrl } from '../api/scanner';
 import { categorizeApp, CATEGORIES } from '../utils/categorize';
+import { useAppIcons } from '../utils/useAppIcons';
 
 interface Props {
   scanResult: ScanResult | null;
@@ -63,6 +64,8 @@ export function Downloads({ scanResult }: Props) {
     }
   };
 
+  const appIcons = useAppIcons(scanResult?.applications ?? []);
+
   if (!scanResult) return <p>No scan data. Run a scan first.</p>;
 
   return (
@@ -97,7 +100,8 @@ export function Downloads({ scanResult }: Props) {
         <>
           <p style={{ color: '#2e7d32', fontSize: 13, margin: '8px 0' }}>--- Matched (Auto-link) ---</p>
           {matched.map((app, i) => (
-            <AppCard key={i} name={app.name} version={app.version} app={app}
+            <AppCard key={i} name={app.name} version={app.version}
+              iconUrl={appIcons[app.name]}
               downloadUrl={links[app.name]?.official_url} matched={true} />
           ))}
         </>
@@ -107,7 +111,8 @@ export function Downloads({ scanResult }: Props) {
         <>
           <p style={{ color: '#c62828', fontSize: 13, margin: '8px 0' }}>--- Unmatched (Search Required) ---</p>
           {unmatched.map((app, i) => (
-            <AppCard key={i} name={app.name} version={app.version} app={app} matched={false}
+            <AppCard key={i} name={app.name} version={app.version}
+              iconUrl={appIcons[app.name]} matched={false}
               onSearch={() => handleSearch(app.name)} />
           ))}
         </>

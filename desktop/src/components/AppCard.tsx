@@ -1,7 +1,6 @@
-import { useState, useEffect } from 'react';
-import { openUrl, getAppIcon } from '../api/scanner';
+import { useState } from 'react';
+import { openUrl } from '../api/scanner';
 import { categorizeApp, getAppIconUrl } from '../utils/categorize';
-import type { Application } from '../types';
 
 interface Props {
   name: string;
@@ -10,23 +9,15 @@ interface Props {
   downloadUrl?: string;
   matched?: boolean;
   onSearch?: () => void;
-  app?: Application;
+  /** Icon URL: from CDN or extracted exe base64 */
+  iconUrl?: string | null;
 }
 
-export function AppCard({ name, version, source, downloadUrl, matched, onSearch, app }: Props) {
+export function AppCard({ name, version, source, downloadUrl, matched, onSearch, iconUrl }: Props) {
   const { icon: fallbackIcon, category } = categorizeApp(name);
-  const [iconSrc, setIconSrc] = useState<string | null>(getAppIconUrl(name));
-  const [loadFailed, setLoadFailed] = useState(false);
-
-  useEffect(() => {
-    if (app?.icon_path) {
-      getAppIcon({ icon_path: app.icon_path, name: app.name }).then(b64 => {
-        if (b64) { setIconSrc(b64); setLoadFailed(false); }
-      });
-    }
-  }, [app?.icon_path, app?.name]);
-
-  const showEmoji = !iconSrc || loadFailed;
+  const [imgError, setImgError] = useState(false);
+  const src = iconUrl || getAppIconUrl(name);
+  const showImg = src && !imgError;
 
   const handleDownload = () => {
     if (downloadUrl) openUrl(downloadUrl);
@@ -38,11 +29,11 @@ export function AppCard({ name, version, source, downloadUrl, matched, onSearch,
       display: 'flex', justifyContent: 'space-between', alignItems: 'center'
     }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: 10, flex: 1 }}>
-        {showEmoji ? (
-          <span style={{ fontSize: 18 }}>{fallbackIcon}</span>
+        {showImg ? (
+          <img src={src!} alt="" style={{ width: 22, height: 22, borderRadius: 3 }}
+            onError={() => setImgError(true)} />
         ) : (
-          <img src={iconSrc!} alt="" style={{ width: 22, height: 22, borderRadius: 3 }}
-            onError={() => setLoadFailed(true)} />
+          <span style={{ fontSize: 18 }}>{fallbackIcon}</span>
         )}
         <div style={{ flex: 1 }}>
           <strong>{name}</strong>

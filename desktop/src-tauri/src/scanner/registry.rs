@@ -34,26 +34,14 @@ pub fn get_installed_apps() -> Vec<Application> {
                     let display_name: Option<String> = key.get_value("DisplayName").ok();
                     if let Some(name) = display_name {
                         if name.trim().is_empty() { continue; }
-                        let icon_path: Option<String> = key.get_value("DisplayIcon").ok();
-                        let install_path: Option<String> = key.get_value("InstallLocation").ok();
-                        let guessed_exe = install_path.as_ref().and_then(|p| {
-                            let dir = std::path::Path::new(p);
-                            std::fs::read_dir(dir).ok().and_then(|mut entries| {
-                                entries.find_map(|e| {
-                                    let p = e.ok()?.path();
-                                    let ext = p.extension()?.to_str()?;
-                                    if ext.eq_ignore_ascii_case("exe") { Some(p.to_string_lossy().to_string()) } else { None }
-                                })
-                            })
-                        });
                         apps.push(Application {
                             name: name.clone(),
                             version: key.get_value("DisplayVersion").ok().unwrap_or_default(),
                             publisher: key.get_value("Publisher").ok(),
                             source: "registry".to_string(),
-                            install_path: install_path.clone(),
+                            install_path: key.get_value("InstallLocation").ok(),
                             install_date: key.get_value("InstallDate").ok(),
-                            icon_path: icon_path.or(guessed_exe),
+                            icon_path: key.get_value("DisplayIcon").ok(),
                         });
                     }
                 }
