@@ -138,6 +138,62 @@ export const CATEGORIES: CategoryInfo[] = [
   ] },
 ];
 
+// Known app icons from simple-icons CDN (fallback when exe extraction fails)
+const iconMap = new Map([
+  ['google chrome', 'googlechrome'], ['firefox', 'firefoxbrowser'], ['microsoft edge', 'microsoftedge'],
+  ['visual studio code', 'visualstudiocode'], ['intellij', 'intellijidea'], ['pycharm', 'pycharm'],
+  ['webstorm', 'webstorm'], ['goland', 'goland'], ['postman', 'postman'],
+  ['docker', 'docker'], ['git', 'git'], ['github desktop', 'github'],
+  ['sublime', 'sublimetext'], ['notepad++', 'notepadplusplus'],
+  ['discord', 'discord'], ['slack', 'slack'], ['telegram', 'telegram'],
+  ['spotify', 'spotify'], ['vlc', 'vlc'], ['obs', 'obsstudio'],
+  ['steam', 'steam'], ['epic', 'epicgames'], ['figma', 'figma'],
+  ['blender', 'blender'], ['gimp', 'gimp'], ['virtualbox', 'virtualbox'],
+  ['vmware', 'vmware'], ['postgresql', 'postgresql'], ['mysql', 'mysql'],
+  ['mongodb', 'mongodb'], ['redis', 'redis'], ['dbeaver', 'dbeaver'],
+  ['node.js', 'nodedotjs'], ['python', 'python'], ['java', 'java'],
+  ['rust', 'rust'], ['photoshop', 'adobephotoshop'], ['premiere', 'adobepremierepro'],
+  ['after effects', 'adobeaftereffects'], ['illustrator', 'adobeillustrator'],
+  ['lightroom', 'adobelightroom'], ['notion', 'notion'], ['obsidian', 'obsidian'],
+  ['wps', 'wps'], ['office', 'microsoftoffice'], ['wechat', 'wechat'],
+  ['qq', 'tencentqq'], ['dingtalk', 'dingtalk'], ['feishu', 'lark'],
+  ['bilibili', 'bilibili'], ['netflix', 'netflix'], ['twitch', 'twitch'],
+  ['zoom', 'zoom'], ['teamviewer', 'teamviewer'], ['anydesk', 'anydesk'],
+  ['matlab', 'mathworks'], ['anaconda', 'anaconda'], ['jupyter', 'jupyter'],
+  ['cmake', 'cmake'], ['gradle', 'gradle'], ['maven', 'apachemaven'],
+  ['terraform', 'terraform'], ['ansible', 'ansible'], ['jenkins', 'jenkins'],
+  ['wireshark', 'wireshark'], ['putty', 'putty'], ['winscp', 'winscp'],
+  ['everything', 'everything'], ['7-zip', '7zip'], ['winrar', 'winrar'],
+  ['ccleaner', 'ccleaner'], ['bitwarden', 'bitwarden'], ['1password', '1password'],
+  ['keepass', 'keepass'], ['cursor', 'cursor'], ['powershell', 'powershell'],
+  ['terminal', 'windowsterminal'], ['nvidia', 'nvidia'], ['amd', 'amd'],
+  ['intel', 'intel'], ['xbox', 'xbox'], ['minecraft', 'minecraft'],
+  ['unity', 'unity'], ['unreal', 'unrealengine'], ['godot', 'godotengine'],
+  ['arduino', 'arduino'], ['qt ', 'qt'], ['dotnet', 'dotnet'],
+  ['xampp', 'xampp'], ['filezilla', 'filezilla'], ['zotero', 'zotero'],
+  ['xmind', 'xmind'], ['canva', 'canva'], ['sketch', 'sketch'],
+  ['trello', 'trello'], ['asana', 'asana'], ['todoist', 'todoist'],
+  ['evernote', 'evernote'], ['signal', 'signal'], ['whatsapp', 'whatsapp'],
+  ['skype', 'skype'], ['line', 'line'], ['krita', 'krita'],
+  ['inkscape', 'inkscape'], ['autocad', 'autocad'], ['freecad', 'freecad'],
+  ['solidworks', 'dassaultsystemes'], ['coreldraw', 'coreldraw'],
+  ['audacity', 'audacity'], ['handbrake', 'handbrake'],
+  ['shotcut', 'shotcut'], ['kdenlive', 'kdenlive'], ['openshot', 'openshot'],
+  ['davinci resolve', 'davinciresolve'], ['vegas', 'vegas'],
+  ['camtasia', 'techsmith'], ['potplayer', 'potplayer'],
+  ['kodi', 'kodi'], ['plex', 'plex'], ['jellyfin', 'jellyfin'],
+  ['libreoffice', 'libreoffice'], ['foxit', 'foxit'], ['acrobat', 'adobeacrobatreader'],
+  ['draw.io', 'diagramsdotnet'], ['mermaid', 'mermaid'],
+  ['calibre', 'calibre'], ['obsidian', 'obsidian'],
+]);
+export function getAppIconUrl(name: string): string | null {
+  const lower = name.toLowerCase();
+  for (const [key, slug] of iconMap) {
+    if (lower.includes(key)) return `https://cdn.simpleicons.org/${slug}`;
+  }
+  return null;
+}
+
 export function categorizeApp(name: string): { category: string; icon: string } {
   const lower = name.toLowerCase();
   for (const cat of CATEGORIES) {
