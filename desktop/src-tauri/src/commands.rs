@@ -35,6 +35,7 @@ pub fn batch_get_icons(entries: Vec<IconEntry>) -> Result<String, String> {
 Add-Type -AssemblyName System.Drawing
 $list = '{0}' | ConvertFrom-Json
 $result = @{{}}
+$ErrorActionPreference = 'SilentlyContinue'
 foreach ($e in $list) {{
     $name = $e.name
     $candidates = @()
@@ -61,7 +62,7 @@ foreach ($e in $list) {{
     }}
     if (-not $found) {{ $result[$name] = '' }}
 }}
-ConvertTo-Json $result -Compress
+ConvertTo-Json $result -Compress -Depth 10
 "#, json.replace('\'', "''"));
 
     let out = std::process::Command::new("powershell")

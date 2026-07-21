@@ -57,7 +57,12 @@ export async function batchLoadIcons(apps: { name: string; icon_path?: string; i
       display_icon: a.icon_path || '',
       install_dir: a.install_path || '',
     }));
-    const json = await invoke<string>('batch_get_icons', { entries });
+    const raw = await invoke<string>('batch_get_icons', { entries });
+    // Clean BOM and any non-JSON prefix
+    let json = raw.trim();
+    if (json.charCodeAt(0) === 0xFEFF) json = json.slice(1); // UTF-8 BOM
+    const braceIdx = json.indexOf('{');
+    if (braceIdx > 0) json = json.slice(braceIdx);
     const results = JSON.parse(json);
     for (const name of Object.keys(results)) {
       iconCache.set(name, results[name] || null);
