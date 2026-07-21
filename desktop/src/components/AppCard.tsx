@@ -1,5 +1,5 @@
-import { useState, useEffect, useRef, memo } from 'react';
-import { openUrl, queueIconLoad } from '../api/scanner';
+import { useState, memo } from 'react';
+import { openUrl, getCachedIcon } from '../api/scanner';
 import { categorizeApp, getAppIconUrl } from '../utils/categorize';
 
 interface Props {
@@ -9,31 +9,16 @@ interface Props {
   downloadUrl?: string;
   matched?: boolean;
   onSearch?: () => void;
-  icon_path?: string;
-  install_path?: string;
+  iconSrc?: string | null;
 }
 
-export const AppCard = memo(function AppCard({ name, version, source, downloadUrl, matched, onSearch, icon_path, install_path }: Props) {
+export const AppCard = memo(function AppCard({ name, version, source, downloadUrl, matched, onSearch, iconSrc }: Props) {
   const { icon: fallbackIcon, category } = categorizeApp(name);
-  const [iconSrc, setIconSrc] = useState<string | null>(null);
   const [imgError, setImgError] = useState(false);
-  const loadedRef = useRef(false);
 
-  useEffect(() => {
-    if (loadedRef.current) return;
-    loadedRef.current = true;
-    // Try CDN first
-    const cdnUrl = getAppIconUrl(name);
-    if (cdnUrl) { setIconSrc(cdnUrl); return; }
-    // Only try extraction if we have a path
-    if (!icon_path && !install_path) return;
-    queueIconLoad({ name, icon_path, install_path }).then(b64 => {
-      if (b64) setIconSrc(b64);
-    });
-  }, [name, icon_path, install_path]);
-
-  const src = iconSrc;
-  const showImg = src && !imgError;
+  // iconSrc from parent > CDN > emoji
+  const finalSrc = iconSrc !== undefined ? iconSrc : (getCachedIcon(name) || getAppIconUrl(name));
+  const showImg = finalSrc && !imgError;
 
   const handleDownload = () => {
     if (downloadUrl) openUrl(downloadUrl);
@@ -46,7 +31,7 @@ export const AppCard = memo(function AppCard({ name, version, source, downloadUr
     }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: 10, flex: 1 }}>
         {showImg ? (
-          <img src={src!} alt="" style={{ width: 22, height: 22, borderRadius: 3 }}
+          <img src={finalSrc!} alt="" style={{ width: 22, height: 22, borderRadius: 3 }}
             onError={() => setImgError(true)} />
         ) : (
           <span style={{ fontSize: 18 }}>{fallbackIcon}</span>
@@ -65,11 +50,11 @@ export const AppCard = memo(function AppCard({ name, version, source, downloadUr
       <div>
         {downloadUrl ? (
           <button onClick={handleDownload} style={{ cursor: 'pointer', padding: '4px 14px' }}>
-            ️ Open Download
+            🟢 Open Download
           </button>
         ) : matched === true ? null : onSearch ? (
           <button onClick={onSearch} style={{ cursor: 'pointer', padding: '4px 14px' }}>
-            Search Bing
+            🔍 Search Bing
           </button>
         ) : (
           <span style={{ color: '#ccc', fontSize: 12 }}>---</span>

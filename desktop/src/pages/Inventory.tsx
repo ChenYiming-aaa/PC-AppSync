@@ -1,7 +1,8 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect, useRef } from 'react';
 import type { ScanResult, Application } from '../types';
 import { AppCard } from '../components/AppCard';
 import { IconLoadProgress } from '../components/IconLoadProgress';
+import { batchLoadIcons, getCachedIcon } from '../api/scanner';
 import { categorizeApp, CATEGORIES, findAppGroup, isSystemApp } from '../utils/categorize';
 
 interface Props {
@@ -13,6 +14,13 @@ export function Inventory({ scanResult, onSearchDownload }: Props) {
   const [search, setSearch] = useState('');
   const [filterCategory, setFilterCategory] = useState('全部');
   const [showSystem, setShowSystem] = useState(false);
+  const iconTriggered = useRef(false);
+  useEffect(() => {
+    if (iconTriggered.current || !scanResult) return;
+    iconTriggered.current = true;
+    batchLoadIcons(scanResult.applications);
+  }, [scanResult]);
+
   const [collapsed, setCollapsed] = useState<string[]>([]);
   const [subCollapsed, setSubCollapsed] = useState<string[]>([]);
   const toggle = (key: string) => setCollapsed(prev => prev.includes(key) ? prev.filter(c => c !== key) : [...prev, key]);
@@ -111,7 +119,7 @@ export function Inventory({ scanResult, onSearchDownload }: Props) {
                       {subOpen && grp.apps.map((app, idx) => (
                         <div key={idx} style={{ paddingLeft: 12 }}>
                           <AppCard name={app.name} version={app.version} source={app.source}
-                            icon_path={app.icon_path} install_path={app.install_path}
+                            iconSrc={getCachedIcon(app.name)}
                             onSearch={() => onSearchDownload(app.name)} />
                         </div>
                       ))}
@@ -121,7 +129,7 @@ export function Inventory({ scanResult, onSearchDownload }: Props) {
                 {/* Standalone apps in this category */}
                 {standalone.map((app, idx) => (
                   <AppCard key={'s' + idx} name={app.name} version={app.version} source={app.source}
-                    icon_path={app.icon_path} install_path={app.install_path}
+                    iconSrc={getCachedIcon(app.name)}
                     onSearch={() => onSearchDownload(app.name)} />
                 ))}
               </div>

@@ -1,9 +1,9 @@
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useRef } from 'react';
 import type { ScanResult, DownloadLink } from '../types';
 import { AppCard } from '../components/AppCard';
 import { IconLoadProgress } from '../components/IconLoadProgress';
 import { api } from '../api/client';
-import { openUrl } from '../api/scanner';
+import { openUrl, batchLoadIcons, getCachedIcon } from '../api/scanner';
 import { categorizeApp, CATEGORIES } from '../utils/categorize';
 
 interface Props {
@@ -64,6 +64,13 @@ export function Downloads({ scanResult }: Props) {
     }
   };
 
+  const iconLoaded = useRef(false);
+  useEffect(() => {
+    if (iconLoaded.current || !scanResult) return;
+    iconLoaded.current = true;
+    batchLoadIcons(scanResult.applications);
+  }, [scanResult]);
+
   if (!scanResult) return <p>No scan data. Run a scan first.</p>;
 
   return (
@@ -100,7 +107,7 @@ export function Downloads({ scanResult }: Props) {
           <p style={{ color: '#2e7d32', fontSize: 13, margin: '8px 0' }}>--- Matched (Auto-link) ---</p>
           {matched.map((app, i) => (
             <AppCard key={i} name={app.name} version={app.version}
-              icon_path={app.icon_path} install_path={app.install_path}
+              iconSrc={getCachedIcon(app.name)}
               downloadUrl={links[app.name]?.official_url} matched={true} />
           ))}
         </>
@@ -111,7 +118,7 @@ export function Downloads({ scanResult }: Props) {
           <p style={{ color: '#c62828', fontSize: 13, margin: '8px 0' }}>--- Unmatched (Search Required) ---</p>
           {unmatched.map((app, i) => (
             <AppCard key={i} name={app.name} version={app.version}
-              icon_path={app.icon_path} install_path={app.install_path} matched={false}
+              iconSrc={getCachedIcon(app.name)} matched={false}
               onSearch={() => handleSearch(app.name)} />
           ))}
         </>
