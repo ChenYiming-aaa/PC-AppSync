@@ -28,44 +28,13 @@ export function getScanExportData(result: ScanResult): { json: string; csv: stri
   return { json, csv };
 }
 
-// ---- Batch icon extraction ----
-
-export async function batchLoadIcons(apps: { name: string; icon_path?: string; install_path?: string }[]): Promise<Record<string, string | null>> {
-  const result: Record<string, string | null> = {};
-
-  // Apps with CDN icons
-  for (const a of apps) {
-    const cdn = getAppIconUrl(a.name);
-    if (cdn) { result[a.name] = cdn; }
-  }
-
-  // Apps needing extraction
-  const toExtract = apps.filter(a => {
-    if (result[a.name] !== undefined) return false;
-    if (!a.icon_path && !a.install_path) { result[a.name] = null; return false; }
-    return true;
+// Extract icon for a single app. Returns base64 or null.
+export async function fetchAppIcon(app: { name: string; icon_path?: string; install_path?: string }): Promise<string | null> {
+  const cdn = getAppIconUrl(app.name);
+  if (cdn) return cdn; // CDN is instant, no PowerShell needed
+  if (!app.icon_path && !app.install_path) return null;
+  return invoke<string | null>('extract_one_icon', {
+    displayIcon: app.icon_path || '',
+    installDir: app.install_path || '',
   });
-
-  if (toExtract.length > 0) {
-    try {
-      const entries = toExtract.map(a => ({
-        name: a.name,
-        display_icon: a.icon_path || '',
-        install_dir: a.install_path || '',
-      }));
-      const raw = await invoke<string>('batch_get_icons', { entries });
-      const parsed = JSON.parse(raw);
-      for (const name of Object.keys(parsed)) {
-        result[name] = parsed[name] || null;
-      }
-      for (const a of toExtract) {
-        if (result[a.name] === undefined) result[a.name] = null;
-      }
-    } catch (err) {
-      console.error('icon extraction error:', err);
-      toExtract.forEach(a => { result[a.name] = null; });
-    }
-  }
-
-  return result;
 }

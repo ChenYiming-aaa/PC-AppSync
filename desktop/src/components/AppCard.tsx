@@ -1,5 +1,5 @@
-import { useState, memo } from 'react';
-import { openUrl } from '../api/scanner';
+import { useState, useEffect, memo, useRef } from 'react';
+import { openUrl, fetchAppIcon } from '../api/scanner';
 import { categorizeApp } from '../utils/categorize';
 
 interface Props {
@@ -9,12 +9,22 @@ interface Props {
   downloadUrl?: string;
   matched?: boolean;
   onSearch?: () => void;
-  iconSrc?: string | null;
+  icon_path?: string;
+  install_path?: string;
 }
 
-export const AppCard = memo(function AppCard({ name, version, source, downloadUrl, matched, onSearch, iconSrc }: Props) {
+export const AppCard = memo(function AppCard({ name, version, source, downloadUrl, matched, onSearch, icon_path, install_path }: Props) {
   const { icon: fallbackIcon, category } = categorizeApp(name);
+  const [iconSrc, setIconSrc] = useState<string | null>(null);
   const [imgError, setImgError] = useState(false);
+  const loaded = useRef(false);
+
+  useEffect(() => {
+    if (loaded.current) return;
+    loaded.current = true;
+    fetchAppIcon({ name, icon_path, install_path }).then(setIconSrc);
+  }, [name, icon_path, install_path]);
+
   const showImg = iconSrc && !imgError;
 
   return (

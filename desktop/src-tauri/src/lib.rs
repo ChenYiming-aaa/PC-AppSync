@@ -10,7 +10,7 @@ pub fn run() {
             commands::scan_deep,
             commands::open_url,
             commands::export_scan,
-            commands::batch_get_icons,
+            commands::extract_one_icon,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

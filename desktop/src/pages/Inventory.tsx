@@ -1,8 +1,7 @@
-import { useState, useMemo, useEffect, useRef } from 'react';
+import { useState, useMemo } from 'react';
 import type { ScanResult, Application } from '../types';
 import { AppCard } from '../components/AppCard';
 import { IconLoadProgress } from '../components/IconLoadProgress';
-import { batchLoadIcons } from '../api/scanner';
 import { categorizeApp, CATEGORIES, findAppGroup, isSystemApp } from '../utils/categorize';
 
 interface Props {
@@ -16,14 +15,7 @@ export function Inventory({ scanResult, onSearchDownload }: Props) {
   const [showSystem, setShowSystem] = useState(false);
   const [collapsed, setCollapsed] = useState<string[]>([]);
   const [subCollapsed, setSubCollapsed] = useState<string[]>([]);
-  const [iconMap, setIconMap] = useState<Record<string, string | null>>({});
-  const loaded = useRef(false);
-
-  useEffect(() => {
-    if (loaded.current || !scanResult) return;
-    loaded.current = true;
-    batchLoadIcons(scanResult.applications).then(setIconMap);
-  }, [scanResult]);
+  // (icon loading handled per-AppCard now)
 
   const toggle = (key: string) => setCollapsed(prev => prev.includes(key) ? prev.filter(c => c !== key) : [...prev, key]);
   const toggleSub = (key: string) => setSubCollapsed(prev => prev.includes(key) ? prev.filter(c => c !== key) : [...prev, key]);
@@ -119,7 +111,7 @@ export function Inventory({ scanResult, onSearchDownload }: Props) {
                       {subOpen && grp.apps.map((app, idx) => (
                         <div key={idx} style={{ paddingLeft: 12 }}>
                           <AppCard name={app.name} version={app.version} source={app.source}
-                            iconSrc={iconMap[app.name]}
+                            icon_path={app.icon_path} install_path={app.install_path}
                             onSearch={() => onSearchDownload(app.name)} />
                         </div>
                       ))}
@@ -128,7 +120,7 @@ export function Inventory({ scanResult, onSearchDownload }: Props) {
                 })}
                 {standalone.map((app, idx) => (
                   <AppCard key={'s' + idx} name={app.name} version={app.version} source={app.source}
-                    iconSrc={iconMap[app.name]}
+                    icon_path={app.icon_path} install_path={app.install_path}
                     onSearch={() => onSearchDownload(app.name)} />
                 ))}
               </div>
