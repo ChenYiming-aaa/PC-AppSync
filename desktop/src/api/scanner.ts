@@ -58,6 +58,11 @@ async function processQueue() {
   }
 }
 
+/** Diagnostic: test icon extraction for a specific app */
+export async function debugIcon(appName: string, displayIcon: string, installDir: string): Promise<string> {
+  return invoke<string>('debug_icon', { appName, displayIcon, installDir: installDir || null });
+}
+
 export function queueIconLoad(app: { icon_path?: string; name: string; install_path?: string }): Promise<string | null> {
   const cached = iconCache.get(app.name);
   if (cached !== undefined) return Promise.resolve(cached);

@@ -29,63 +29,76 @@ pub fn scan_deep() -> Result<scanner::ScanResult, String> {
     Ok(result)
 }
 
-/// Extract icon from a DisplayIcon registry value using Windows Shell API
-/// Handles: exe, exe,0, .ico, dll,-1, etc.
 #[tauri::command]
 pub fn get_app_icon(display_icon: String, install_dir: Option<String>) -> Result<Option<String>, String> {
+    let idir = install_dir.clone().unwrap_or_default();
     let script = format!(r#"
 Add-Type -AssemblyName System.Drawing
-$result = ''
-$paths = @()
-
-# Primary: DisplayIcon value
+$targets = @()
 $di = '{0}'
-if ($di) {{ $paths += $di }}
+if ($di) {{ $targets += @($di) }}
 
-# Secondary: try install_dir + guessed exe
-$installDir = '{1}'
-if ($installDir -and (Test-Path $installDir)) {{
-    Get-ChildItem $installDir -Filter *.exe -ErrorAction SilentlyContinue | ForEach-Object {{ $paths += $_.FullName }}
+$idir = '{1}'
+if ($idir -and (Test-Path $idir)) {{
+    Get-ChildItem $idir -Filter *.exe -ErrorAction SilentlyContinue | ForEach-Object {{ $targets += $_.FullName }}
+    # Also check common subdirs
+    foreach ($sub in @('bin','core','app','client','launcher')) {{
+        $sd = Join-Path $idir $sub
+        if (Test-Path $sd) {{ Get-ChildItem $sd -Filter *.exe -ErrorAction SilentlyContinue | ForEach-Object {{ $targets += $_.FullName }} }}
+    }}
 }}
 
-foreach ($raw in $paths) {{
-    $clean = $raw -replace ',.*$', '' -replace '%SystemRoot%', $env:SystemRoot -replace '%ProgramFiles%', $env:ProgramFiles
+$result = ''
+foreach ($p in $targets) {{
+    $clean = $p -replace ',.*$','' -replace '%SystemRoot%',[Environment]::GetFolderPath('System') -replace '%ProgramFiles%',$env:ProgramFiles -replace '%ProgramW6432%',$env:ProgramW6432 -replace '%ProgramFiles(x86)%',"${{env:ProgramFiles(x86)}}"
     if (-not (Test-Path $clean)) {{ continue }}
     try {{
-        $ext = [System.IO.Path]::GetExtension($clean).ToLower()
-        if ($ext -eq '.ico') {{
-            $ico = [System.Drawing.Icon]::new($clean)
-            $bmp = $ico.ToBitmap()
-        }} else {{
-            $ico = [System.Drawing.Icon]::ExtractAssociatedIcon($clean)
-            if (-not $ico) {{ continue }}
-            $bmp = New-Object System.Drawing.Bitmap 32,32
-            $g = [System.Drawing.Graphics]::FromImage($bmp)
-            $g.DrawIcon($ico, 0, 0)
-            $g.Dispose()
-        }}
-        $ms = New-Object System.IO.MemoryStream
-        $bmp.Save($ms, [System.Drawing.Imaging.ImageFormat]::Png)
+        $ico = [System.Drawing.Icon]::ExtractAssociatedIcon($clean)
+        if (-not $ico) {{ continue }}
+        $bmp = New-Object Drawing.Bitmap 32,32
+        $g = [Drawing.Graphics]::FromImage($bmp)
+        $g.DrawIcon($ico,0,0); $g.Dispose()
+        $ms = New-Object IO.MemoryStream
+        $bmp.Save($ms, [Drawing.Imaging.ImageFormat]::Png)
         $result = [Convert]::ToBase64String($ms.ToArray())
-        $bmp.Dispose()
-        break
-    }} catch {{ continue }}
+        $bmp.Dispose(); break
+    }} catch {{ }}
 }}
 Write-Host -NoNewline $result
-"#, display_icon.replace('\'', "''"), install_dir.unwrap_or_default().replace('\'', "''"));
+"#, display_icon.replace('\'',"''"), idir.replace('\'',"''"));
 
-    let output = std::process::Command::new("powershell")
+    let o = std::process::Command::new("powershell")
         .args(["-NoProfile", "-NonInteractive", "-Command", &script])
-        .output()
-        .map_err(|e| format!("Failed to run powershell: {}", e))?;
-
-    if output.status.success() {
-        let b64 = String::from_utf8_lossy(&output.stdout).trim().to_string();
-        if !b64.is_empty() {
-            return Ok(Some("data:image/png;base64,".to_string() + &b64));
-        }
+        .output().map_err(|e| e.to_string())?;
+    if o.status.success() {
+        let b64 = String::from_utf8_lossy(&o.stdout).trim().to_string();
+        if !b64.is_empty() { return Ok(Some(format!("data:image/png;base64,{}", b64))); }
     }
     Ok(None)
+}
+
+#[tauri::command]
+pub fn debug_icon(_app_name: String, display_icon: String, install_dir: Option<String>) -> Result<String, String> {
+    let idir = install_dir.unwrap_or_default();
+    let script = format!(r#"
+$di = '{0}'
+$idir = '{1}'
+$out = @()
+$out += "DisplayIcon: $di"
+$out += "InstallDir: $idir"
+$clean = $di -replace ',.*$',''
+$out += "Cleaned: $clean"
+$out += "Exists: $(Test-Path $clean)"
+if ($idir) {{ $out += "DirExists: $(Test-Path $idir)" }}
+if ($idir -and (Test-Path $idir)) {{
+    Get-ChildItem $idir -Filter *.exe -ErrorAction SilentlyContinue | ForEach-Object {{ $out += "  Exe: $($_.FullName) ($($_.Length) bytes)" }}
+}}
+$out -join "`n"
+"#, display_icon.replace('\'',"''"), idir.replace('\'',"''"));
+    let o = std::process::Command::new("powershell")
+        .args(["-NoProfile", "-NonInteractive", "-Command", &script])
+        .output().map_err(|e| e.to_string())?;
+    Ok(String::from_utf8_lossy(&o.stdout).trim().to_string())
 }
 
 #[tauri::command]
