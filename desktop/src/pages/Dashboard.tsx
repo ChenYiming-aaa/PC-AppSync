@@ -19,6 +19,9 @@ interface Props {
 
 export function Dashboard({ lastScan, onScanComplete }: Props) {
   const [showSystem, setShowSystem] = useState(false);
+  const [syncStatus, setSyncStatus] = useState<'synced' | 'local' | 'none'>(
+    (localStorage.getItem('appsync_last_sync') ? 'synced' : 'none')
+  );
   const allApps = lastScan?.applications ?? [];
   const realApps = allApps.filter(a => isRealApp(a.name));
   const systemCount = allApps.length - realApps.length;
@@ -37,6 +40,12 @@ export function Dashboard({ lastScan, onScanComplete }: Props) {
       });
     });
   }, [lastScan, showSystem]);
+
+  useEffect(() => {
+    if (!lastScan) { setSyncStatus('none'); return; }
+    const stored = localStorage.getItem('appsync_last_sync');
+    if (stored) setSyncStatus('synced');
+  }, [lastScan]);
 
   const handleExport = async () => {
     if (!lastScan) return;
@@ -76,7 +85,16 @@ export function Dashboard({ lastScan, onScanComplete }: Props) {
       ) : (
         <p style={{ color: '#999' }}>No scan data yet. Run a scan to get started.</p>
       )}
-      <ScanButton onScanComplete={onScanComplete} />
+        <ScanButton onScanComplete={onScanComplete} />
+        <div style={{ textAlign: 'center', marginTop: 12, fontSize: 12 }}>
+          {syncStatus === 'synced' ? (
+            <span style={{ color: '#2e7d32' }}>☁️ Synced to cloud</span>
+          ) : syncStatus === 'local' ? (
+            <span style={{ color: '#f57c00' }}> Local only</span>
+          ) : (
+            <span style={{ color: '#999' }}> Not uploaded</span>
+          )}
+        </div>
     </div>
   );
 }

@@ -4,6 +4,7 @@ import { LoginForm } from './components/LoginForm';
 import { Dashboard } from './pages/Dashboard';
 import { Inventory } from './pages/Inventory';
 import { Downloads } from './pages/Downloads';
+import { Admin } from './pages/Admin';
 import { api } from './api/client';
 import { openUrl } from './api/scanner';
 import type { ScanResult, User } from './types';
@@ -42,8 +43,10 @@ export default function App() {
     setScanResult(result);
     try {
       await api.uploadInventory(result);
+      localStorage.setItem('appsync_last_sync', Date.now().toString());
       alert('Scan result uploaded to cloud!');
     } catch (err: any) {
+      localStorage.removeItem('appsync_last_sync');
       alert('Upload failed: ' + (err?.message || 'Unknown error'));
     }
   };
@@ -53,7 +56,8 @@ export default function App() {
   }
 
   return (
-    <Layout currentPage={page} onNavigate={setPage} userEmail={user.email} onLogout={handleLogout}>
+    <Layout currentPage={page} onNavigate={setPage} userEmail={user.email} onLogout={handleLogout}
+      extraNav={user.is_admin ? [{ key: 'admin', label: 'Admin' }] : undefined}>
       {page === 'dashboard' && (
         <Dashboard lastScan={scanResult} onScanComplete={handleScanComplete} />
       )}
@@ -63,6 +67,7 @@ export default function App() {
         }} />
       )}
       {page === 'downloads' && <Downloads scanResult={scanResult} />}
+      {page === 'admin' && user.is_admin && <Admin />}
     </Layout>
   );
 }

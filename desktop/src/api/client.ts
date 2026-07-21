@@ -14,6 +14,23 @@ function clearToken() {
   localStorage.removeItem('appsync_token');
 }
 
+let refreshPromise: Promise<boolean> | null = null;
+
+async function tryRefresh(): Promise<boolean> {
+  const token = getToken();
+  if (!token) return false;
+  try {
+    const res = await fetch(API_BASE + '/auth/refresh', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token },
+    });
+    if (!res.ok) { clearToken(); return false; }
+    const data = await res.json();
+    setToken(data.token);
+    return true;
+  } catch { clearToken(); return false; }
+}
+
 async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
   const token = getToken();
   const headers: Record<string, string> = {
@@ -22,7 +39,19 @@ async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
   };
   if (token) headers['Authorization'] = 'Bearer ' + token;
 
-  const res = await fetch(API_BASE + path, { ...options, headers });
+  let res = await fetch(API_BASE + path, { ...options, headers });
+  
+  // Auto-refresh token on 401
+  if (res.status === 401 && !refreshPromise) {
+    refreshPromise = tryRefresh();
+    const refreshed = await refreshPromise;
+    refreshPromise = null;
+    if (refreshed) {
+      headers['Authorization'] = 'Bearer ' + getToken();
+      res = await fetch(API_BASE + path, { ...options, headers });
+    }
+  }
+  
   if (!res.ok) {
     const err = await res.json().catch(() => ({ error: res.statusText }));
     throw new Error(err.error || 'Request failed');

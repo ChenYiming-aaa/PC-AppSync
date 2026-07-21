@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo } from 'react';
-import type { ScanResult, DownloadLink, Application } from '../types';
+import type { ScanResult, DownloadLink } from '../types';
 import { AppCard } from '../components/AppCard';
 import { api } from '../api/client';
 import { openUrl } from '../api/scanner';
@@ -15,8 +15,11 @@ export function Downloads({ scanResult }: Props) {
   const [search, setSearch] = useState('');
   const [categoryFilter, setCategoryFilter] = useState('全部');
   const [inventories, setInventories] = useState<{ id: number; machine_name: string; scan_time: string }[]>([]);
+  const [submitApp, setSubmitApp] = useState<string | null>(null);
+  const [submitUrl, setSubmitUrl] = useState('');
+  const [submitMsg, setSubmitMsg] = useState('');
   const [selectedOtherId, setSelectedOtherId] = useState<number | null>(null);
-  const [missingApps, setMissingApps] = useState<Application[] | null>(null);
+  const [missingApps, setMissingApps] = useState<any[] | null>(null);
   const [diffMachine, setDiffMachine] = useState<string | null>(null);
 
   // Fetch available inventories for comparison
@@ -99,6 +102,18 @@ export function Downloads({ scanResult }: Props) {
     }
   };
 
+  const handleSubmit = async (appName: string) => {
+    if (!submitUrl) return;
+    try {
+      await api.submitDownloadLink({ software_name: appName, official_url: submitUrl, category: '' });
+      setSubmitMsg('Submitted! Admin will review it.');
+      setSubmitUrl('');
+      setTimeout(() => setSubmitMsg(''), 3000);
+    } catch (err: any) {
+      setSubmitMsg('Failed: ' + err.message);
+    }
+  };
+
   return (
     <div>
       <h2>Downloads</h2>
@@ -164,7 +179,15 @@ export function Downloads({ scanResult }: Props) {
 
       {matched.length > 0 && (
         <>
-          <p style={{ color: '#2e7d32', fontSize: 13, margin: '8px 0' }}>--- Matched (Auto-link) ---</p>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', margin: '8px 0' }}>
+            <p style={{ color: '#2e7d32', fontSize: 13, margin: 0 }}>--- Matched (Auto-link) ---</p>
+            <button onClick={() => {
+              const urls = matched.map(a => `${a.name}: ${links[a.name]?.official_url || ''}`).join('\n');
+              navigator.clipboard.writeText(urls).then(() => alert('Copied ' + matched.length + ' URLs!'));
+            }} style={{ fontSize: 11, padding: '2px 8px', cursor: 'pointer' }}>
+              Copy All Links
+            </button>
+          </div>
           {matched.map((app, i) => (
             <AppCard key={i} name={app.name} version={app.version}
               downloadUrl={links[app.name]?.official_url} matched={true} />
@@ -176,8 +199,28 @@ export function Downloads({ scanResult }: Props) {
         <>
           <p style={{ color: '#c62828', fontSize: 13, margin: '8px 0' }}>--- Unmatched (Search Required) ---</p>
           {unmatched.map((app, i) => (
-            <AppCard key={i} name={app.name} version={app.version} matched={false}
-              onSearch={() => handleSearch(app.name)} />
+            <div key={i}>
+              <AppCard name={app.name} version={app.version} matched={false}
+                onSearch={() => handleSearch(app.name)} />
+              <div style={{ marginLeft: 36, marginBottom: 6 }}>
+                {submitApp === app.name ? (
+                  <div style={{ display: 'flex', gap: 4, alignItems: 'center' }}>
+                    <input type="text" placeholder="Paste official download URL..." value={submitUrl}
+                      onChange={e => setSubmitUrl(e.target.value)}
+                      style={{ flex: 1, padding: '4px 8px', fontSize: 12, border: '1px solid #ccc', borderRadius: 4 }} />
+                    <button onClick={() => handleSubmit(app.name)} style={{ fontSize: 11, padding: '3px 8px', cursor: 'pointer' }}>Submit</button>
+                    <button onClick={() => { setSubmitApp(null); setSubmitUrl(''); }} style={{ fontSize: 11, padding: '3px 8px', cursor: 'pointer' }}>Cancel</button>
+                  </div>
+                ) : (
+                  <button onClick={() => setSubmitApp(app.name)} style={{ fontSize: 11, padding: '2px 8px', cursor: 'pointer', color: '#666' }}>
+                    + Submit official link
+                  </button>
+                )}
+                {submitMsg && submitApp === app.name && (
+                  <span style={{ fontSize: 11, color: '#2e7d32', marginLeft: 8 }}>{submitMsg}</span>
+                )}
+              </div>
+            </div>
           ))}
         </>
       )}

@@ -57,6 +57,21 @@ router.post('/login', async (req, res) => {
   }
 });
 
+router.post('/refresh', authMiddleware, async (req, res) => {
+  try {
+    const result = await db.query('SELECT id, email, nickname, is_admin FROM users WHERE id = $1', [req.userId]);
+    if (result.rows.length === 0) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+    const user = result.rows[0];
+    const token = jwt.sign({ userId: user.id, isAdmin: user.is_admin }, config.jwtSecret, { expiresIn: config.jwtExpiresIn });
+    res.json({ token, user });
+  } catch (err) {
+    console.error('Refresh error:', err);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
 router.get('/profile', authMiddleware, async (req, res) => {
   try {
     const result = await db.query('SELECT id, email, nickname, is_admin, created_at FROM users WHERE id = $1', [req.userId]);

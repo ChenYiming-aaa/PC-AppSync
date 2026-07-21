@@ -6,13 +6,15 @@ interface Props {
   onNavigate: (page: string) => void;
   userEmail?: string;
   onLogout: () => void;
+  extraNav?: { key: string; label: string }[];
 }
 
-export function Layout({ children, currentPage, onNavigate, userEmail, onLogout }: Props) {
+export function Layout({ children, currentPage, onNavigate, userEmail, onLogout, extraNav }: Props) {
   const tabs = [
     { key: 'dashboard', label: 'Dashboard' },
     { key: 'inventory', label: 'Software List' },
     { key: 'downloads', label: 'Downloads' },
+    ...(extraNav || []),
   ];
 
   return (
