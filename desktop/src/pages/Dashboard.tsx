@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import type { ScanResult } from '../types';
 import { ScanButton } from '../components/ScanButton';
 import { api } from '../api/client';
-import { exportScan, getScanExportData } from '../api/scanner';
+import { exportScan, getScanExportData, generateInstallScript } from '../api/scanner';
 import { isSystemApp, findAppGroup } from '../utils/categorize';
 
 function isRealApp(name: string): boolean {
@@ -65,7 +65,17 @@ export function Dashboard({ lastScan, onScanComplete }: Props) {
     <div>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
         <h2>Overview</h2>
-        {lastScan && <button onClick={handleExport} style={{ fontSize: 12 }}>Export</button>}
+        <div style={{ display: 'flex', gap: 6 }}>
+          {lastScan && <button onClick={() => {
+            const script = generateInstallScript(lastScan);
+            const blob = new Blob([script], { type: 'text/plain' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url; a.download = 'restore-packages.ps1'; a.click();
+            URL.revokeObjectURL(url);
+          }} style={{ fontSize: 12 }}>Script</button>}
+          {lastScan && <button onClick={handleExport} style={{ fontSize: 12 }}>Export</button>}
+        </div>
       </div>
       {lastScan ? (
         <>
