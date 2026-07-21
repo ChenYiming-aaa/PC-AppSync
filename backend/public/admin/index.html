@@ -1,0 +1,169 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AppSync Admin</title>
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body { font-family: -apple-system, 'Segoe UI', sans-serif; background: #f5f5f5; color: #333; }
+.login-wrap { max-width: 360px; margin: 100px auto; background: #fff; padding: 32px; border-radius: 12px; box-shadow: 0 2px 12px rgba(0,0,0,0.08); }
+.login-wrap h1 { font-size: 22px; margin-bottom: 20px; }
+.login-wrap input { width: 100%; padding: 10px 12px; margin-bottom: 12px; border: 1px solid #ddd; border-radius: 6px; font-size: 14px; }
+.login-wrap button { width: 100%; padding: 10px; background: #1976d2; color: #fff; border: none; border-radius: 6px; font-size: 15px; cursor: pointer; }
+.login-wrap .err { color: #c62828; font-size: 13px; margin-bottom: 10px; }
+.app-wrap { display: none; max-width: 800px; margin: 0 auto; padding: 20px; }
+header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; padding-bottom: 12px; border-bottom: 1px solid #ddd; }
+header h1 { font-size: 20px; }
+header button { padding: 4px 14px; cursor: pointer; border: 1px solid #ccc; border-radius: 4px; background: #fff; }
+.tabs { display: flex; gap: 6px; margin-bottom: 16px; }
+.tabs button { padding: 6px 20px; cursor: pointer; border: 1px solid #ccc; border-radius: 6px; background: #fff; }
+.tabs button.active { background: #e0e0e0; font-weight: bold; }
+.card { background: #fff; border-radius: 8px; padding: 12px 16px; margin-bottom: 8px; border: 1px solid #eee; display: flex; justify-content: space-between; align-items: center; }
+.card .info { flex: 1; }
+.card .name { font-weight: bold; }
+.card .url { font-size: 12px; color: #666; word-break: break-all; margin-top: 2px; }
+.card .meta { font-size: 11px; color: #999; margin-top: 2px; }
+.card .actions { display: flex; gap: 6px; flex-shrink: 0; }
+.btn { padding: 3px 14px; cursor: pointer; border: none; border-radius: 4px; color: #fff; font-size: 13px; }
+.btn-approve { background: #2e7d32; }
+.btn-reject { background: #c62828; }
+.btn-admin { background: #1976d2; }
+.btn-demote { background: #f57c00; }
+.btn-del { background: #c62828; }
+</style>
+</head>
+<body>
+
+<div class="login-wrap" id="loginWrap">
+  <h1>AppSync Admin</h1>
+  <div class="err" id="loginErr"></div>
+  <input type="email" id="email" placeholder="Email" value="admin@appsync.local">
+  <input type="password" id="password" placeholder="Password" value="admin123">
+  <button onclick="login()">Login</button>
+</div>
+
+<div class="app-wrap" id="appWrap">
+  <header>
+    <h1>AppSync Admin</h1>
+    <div><span id="userEmail" style="margin-right:12px;font-size:13px;color:#666"></span><button onclick="logout()">Logout</button></div>
+  </header>
+
+  <div class="tabs">
+    <button class="active" onclick="switchTab('review')" id="tabReview">Pending Review</button>
+    <button onclick="switchTab('users')" id="tabUsers">User Management</button>
+  </div>
+
+  <div id="panelReview"></div>
+  <div id="panelUsers" style="display:none"></div>
+</div>
+
+<script>
+const API = 'http://localhost:3000/api/v1';
+let token = localStorage.getItem('admin_token');
+
+async function req(path, opts = {}) {
+  const h = { 'Content-Type': 'application/json', ...opts.headers };
+  if (token) h['Authorization'] = 'Bearer ' + token;
+  const r = await fetch(API + path, { ...opts, headers: h });
+  if (r.status === 401 && token) {
+    const refresh = await fetch(API + '/auth/refresh', { method: 'POST', headers: h });
+    if (refresh.ok) {
+      const d = await refresh.json();
+      token = d.token; localStorage.setItem('admin_token', token);
+      h['Authorization'] = 'Bearer ' + token;
+      return fetch(API + path, { ...opts, headers: h });
+    }
+  }
+  return r;
+}
+
+async function login() {
+  const r = await req('/auth/login', {
+    method: 'POST',
+    body: JSON.stringify({ email: document.getElementById('email').value, password: document.getElementById('password').value })
+  });
+  const d = await r.json();
+  if (!r.ok) { document.getElementById('loginErr').textContent = d.error; return; }
+  token = d.token; localStorage.setItem('admin_token', token);
+  if (!d.user.is_admin) { document.getElementById('loginErr').textContent = 'Not an admin account'; return; }
+  document.getElementById('userEmail').textContent = d.user.email;
+  document.getElementById('loginWrap').style.display = 'none';
+  document.getElementById('appWrap').style.display = 'block';
+  loadReview();
+}
+
+function logout() { token = null; localStorage.removeItem('admin_token'); location.reload(); }
+
+async function loadReview() {
+  const r = await req('/downloads/links/pending');
+  if (!r.ok) return;
+  const list = await r.json();
+  const html = list.length === 0 ? '<p style="color:#999">No pending submissions.</p>' :
+    list.map(l => '<div class="card"><div class="info"><div class="name">' + esc(l.software_name) + '</div><div class="url">' + esc(l.official_url) + '</div><div class="meta">' + (l.category||'') + ' | by ' + (l.contributor_email||'anonymous') + (l.aliases && l.aliases.length ? ' | aliases: ' + l.aliases.join(', ') : '') + '</div></div><div class="actions"><button class="btn btn-approve" onclick="verify(' + l.id + ',true)">Approve</button><button class="btn btn-reject" onclick="verify(' + l.id + ',false)">Reject</button></div></div>'
+    ).join('');
+  document.getElementById('panelReview').innerHTML = html;
+  document.getElementById('tabReview').textContent = 'Pending Review (' + list.length + ')';
+}
+
+async function verify(id, ok) {
+  await req('/downloads/links/' + id + '/verify', { method: 'PUT', body: JSON.stringify({ verified: ok }) });
+  loadReview();
+}
+
+async function loadUsers() {
+  const r = await req('/auth/users');
+  if (!r.ok) return;
+  const list = await r.json();
+  const html = list.length === 0 ? '<p style="color:#999">No users.</p>' :
+    list.map(u => '<div class="card"><div class="info"><div class="name">' + esc(u.nickname||u.email) + ' <span style="font-weight:normal;color:#666;font-size:13px">' + esc(u.email) + '</span>' + (u.is_admin ? ' <span style="font-size:11px;background:#1976d2;color:#fff;padding:1px 6px;border-radius:3px">Admin</span>' : '') + '</div><div class="meta">ID: ' + u.id + ' | Inventories: ' + (u.inventory_count||0) + '</div></div><div class="actions">' +
+      (u.is_admin ? '<button class="btn btn-demote" onclick="toggleAdmin(' + u.id + ',false)">Demote</button>' : '<button class="btn btn-admin" onclick="toggleAdmin(' + u.id + ',true)">Make Admin</button>') +
+      '<button class="btn btn-del" onclick="delUser(' + u.id + ')">Delete</button></div></div>'
+    ).join('');
+  document.getElementById('panelUsers').innerHTML = html;
+}
+
+async function toggleAdmin(id, make) {
+  await req('/auth/users/' + id + '/admin', { method: 'PUT', body: JSON.stringify({ is_admin: make }) });
+  loadUsers();
+}
+
+async function delUser(id) {
+  if (!confirm('Delete user #' + id + '?')) return;
+  await req('/auth/users/' + id, { method: 'DELETE' });
+  loadUsers();
+}
+
+function switchTab(name) {
+  document.getElementById('tabReview').className = '';
+  document.getElementById('tabUsers').className = '';
+  document.getElementById('panelReview').style.display = 'none';
+  document.getElementById('panelUsers').style.display = 'none';
+  if (name === 'review') {
+    document.getElementById('tabReview').className = 'active';
+    document.getElementById('panelReview').style.display = 'block';
+    loadReview();
+  } else {
+    document.getElementById('tabUsers').className = 'active';
+    document.getElementById('panelUsers').style.display = 'block';
+    loadUsers();
+  }
+}
+
+function esc(s) { const d = document.createElement('div'); d.textContent = s || ''; return d.innerHTML; }
+
+// Auto-login
+if (token) {
+  fetch(API + '/auth/profile', { headers: { 'Authorization': 'Bearer ' + token } })
+    .then(r => r.json()).then(user => {
+      if (user.is_admin) {
+        document.getElementById('userEmail').textContent = user.email;
+        document.getElementById('loginWrap').style.display = 'none';
+        document.getElementById('appWrap').style.display = 'block';
+        loadReview();
+      }
+    }).catch(() => {});
+}
+</script>
+</body>
+</html>

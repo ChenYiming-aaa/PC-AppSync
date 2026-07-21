@@ -4,7 +4,6 @@ import { LoginForm } from './components/LoginForm';
 import { Dashboard } from './pages/Dashboard';
 import { Inventory } from './pages/Inventory';
 import { Downloads } from './pages/Downloads';
-import { Admin } from './pages/Admin';
 import { api } from './api/client';
 import { openUrl } from './api/scanner';
 import type { ScanResult, User } from './types';
@@ -56,8 +55,7 @@ export default function App() {
   }
 
   return (
-    <Layout currentPage={page} onNavigate={setPage} userEmail={user.email} onLogout={handleLogout}
-      extraNav={user.is_admin ? [{ key: 'admin', label: 'Admin' }] : undefined}>
+    <Layout currentPage={page} onNavigate={setPage} userEmail={user.email} onLogout={handleLogout}>
       {page === 'dashboard' && (
         <Dashboard lastScan={scanResult} onScanComplete={handleScanComplete} />
       )}
@@ -67,7 +65,12 @@ export default function App() {
         }} />
       )}
       {page === 'downloads' && <Downloads scanResult={scanResult} />}
-      {page === 'admin' && user.is_admin && <Admin />}
+      {page === 'admin' && user.is_admin && (
+        <div style={{ textAlign: 'center', padding: 40 }}>
+          <p>Admin panel is available as a separate web page:</p>
+          <p><a href="http://localhost:3000/admin" target="_blank" style={{ fontSize: 16, color: '#1976d2' }}>http://localhost:3000/admin</a></p>
+        </div>
+      )}
     </Layout>
   );
 }
