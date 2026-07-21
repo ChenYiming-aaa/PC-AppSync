@@ -3,7 +3,14 @@ import type { ScanResult } from '../types';
 import { ScanButton } from '../components/ScanButton';
 import { api } from '../api/client';
 import { exportScan, getScanExportData } from '../api/scanner';
-import { isSystemApp } from '../utils/categorize';
+import { isSystemApp, findAppGroup } from '../utils/categorize';
+
+function isRealApp(name: string): boolean {
+  if (isSystemApp(name)) return false;
+  const group = findAppGroup(name);
+  if (group && group.category === '系统组件') return false;
+  return true;
+}
 
 interface Props {
   lastScan: ScanResult | null;
@@ -12,10 +19,11 @@ interface Props {
 
 export function Dashboard({ lastScan, onScanComplete }: Props) {
   const [showSystem, setShowSystem] = useState(false);
-  const visibleApps = lastScan?.applications.filter(a => showSystem || !isSystemApp(a.name)) ?? [];
   const allApps = lastScan?.applications ?? [];
+  const realApps = allApps.filter(a => isRealApp(a.name));
+  const systemCount = allApps.length - realApps.length;
+  const visibleApps = showSystem ? allApps : realApps;
   const appCount = visibleApps.length;
-  const systemCount = allApps.length - allApps.filter(a => isSystemApp(a.name)).length;
   const runtimeCount = lastScan?.runtimes.length ?? 0;
   const [matchCount, setMatchCount] = useState(0);
 
