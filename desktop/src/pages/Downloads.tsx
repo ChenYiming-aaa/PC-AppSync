@@ -195,7 +195,9 @@ export function Downloads({ scanResult }: Props) {
           </div>
           {matched.map((app, i) => (
             <AppCard key={i} name={app.name} version={app.version}
-              downloadUrl={links[app.name]?.official_url} matched={true} />
+              downloadUrl={links[app.name]?.official_url} matched={true}
+              isCommunity={!!(links[app.name] as any)?.contributor_id}
+              publisher={app.publisher} installPath={app.install_path} installDate={app.install_date} />
           ))}
         </>
       )}
@@ -206,6 +208,7 @@ export function Downloads({ scanResult }: Props) {
           {unmatched.map((app, i) => (
             <div key={i}>
               <AppCard name={app.name} version={app.version} matched={false}
+                publisher={app.publisher} installPath={app.install_path} installDate={app.install_date}
                 onSearch={() => handleSearch(app.name)} />
               <div style={{ marginLeft: 36, marginBottom: 6 }}>
                 {submitApp === app.name ? (
