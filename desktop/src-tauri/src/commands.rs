@@ -48,7 +48,7 @@ foreach ($e in $list) {{
     if($e.install_dir -and (Test-Path $e.install_dir)){{Get-ChildItem $e.install_dir -Filter *.exe|%%{{$cand+=$_.FullName}}}}
     foreach($p in $cand){{
         if(-not (Test-Path $p)){{continue}}
-        try{{$ico=[Drawing.Icon]::ExtractAssociatedIcon($p);if(-not$ico){{continue}};$b=New-Object Drawing.Bitmap 32,32;$g=[Drawing.Graphics]::FromImage($b);$g.DrawIcon($ico,0,0);$g.Dispose();$m=New-Object IO.MemoryStream;$b.Save($m,[Drawing.Imaging.ImageFormat]::Png);$result[$name]=[Convert]::ToBase64String($m.ToArray());$b.Dispose();break}}catch{{}}
+        try{{$ico=[Drawing.Icon]::ExtractAssociatedIcon($p);if(-not$ico){{continue}};$b=New-Object Drawing.Bitmap 32,32;$g=[Drawing.Graphics]::FromImage($b);$g.Clear([Drawing.Color]::White);$g.DrawIcon($ico,0,0);$g.Dispose();$b=$b.Clone([Drawing.Rectangle]::new(0,0,32,32),[Drawing.Imaging.PixelFormat]::Format24bppRgb);$m=New-Object IO.MemoryStream;$b.Save($m,[Drawing.Imaging.ImageFormat]::Png);$result[$name]=[Convert]::ToBase64String($m.ToArray());$b.Dispose();break}}catch{{}}
     }}
     if(-not$result.ContainsKey($name)){{$result[$name]=''}}
 }}
@@ -63,13 +63,13 @@ Write-Output (ConvertTo-Json $result -Compress -Depth 10)"#,
         .output().map_err(|e| e.to_string())?;
 
     let stdout = String::from_utf8_lossy(&out.stdout).trim().to_string();
-    let stderr = String::from_utf8_lossy(&out.stderr).trim().to_string();
 
     // Clean up temp files
     std::fs::remove_file(&json_path).ok();
     std::fs::remove_file(&script_path).ok();
 
-    if !out.status.success() {
+    if !out.status.success() && stdout.is_empty() {
+        let stderr = String::from_utf8_lossy(&out.stderr).trim().to_string();
         return Err(format!("PowerShell failed: {}", stderr));
     }
 
