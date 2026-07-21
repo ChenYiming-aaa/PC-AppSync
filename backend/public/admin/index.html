@@ -127,8 +127,7 @@ async function loadUsers() {
           (u.is_admin ? '<button class="btn btn-demote" onclick="toggleAdmin(' + u.id + ',false)">Demote</button>' : '<button class="btn btn-admin" onclick="toggleAdmin(' + u.id + ',true)">Make Admin</button>') +
           '<button class="btn btn-del" onclick="delUser(' + u.id + ')">Delete</button>') +
         '</div></div>';
-    })
-    ).join('');
+    }).join('');
   document.getElementById('panelUsers').innerHTML = html;
 }
 
