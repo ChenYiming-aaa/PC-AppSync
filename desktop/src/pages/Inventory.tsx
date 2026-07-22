@@ -89,7 +89,7 @@ export function Inventory({ scanResult: initialScan, onSearchDownload }: Props) 
         <button onClick={async () => {
           try {
             const res = await api.getLatestInventory();
-            if (res?.scan_data) setScanResult(res.scan_data);
+            if (res?.scan_data) { setLinks({}); setScanResult(res.scan_data); }
           } catch { /* ignore */ }
         }} style={{ fontSize: 12, padding: '4px 12px', cursor: 'pointer' }}>Refresh</button>
       </div>
