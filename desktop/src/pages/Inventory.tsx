@@ -16,12 +16,14 @@ export function Inventory({ scanResult: initialScan, onSearchDownload }: Props) 
   const [filterCategory, setFilterCategory] = useState('全部');
   const [showSystem, setShowSystem] = useState(false);
   const [links, setLinks] = useState<Record<string, DownloadLink>>({});
+  const [refreshTick, setRefreshTick] = useState(0);
   const [collapsed, setCollapsed] = useState<string[]>([]);
   const [subCollapsed, setSubCollapsed] = useState<string[]>([]);
 
   // Fetch download link status for visible apps
   useEffect(() => {
     if (!scanResult) return;
+    setLinks({});
     const names = [...new Set(scanResult.applications.map(a => a.name))];
     let i = 0;
     const t = setInterval(() => {
@@ -32,7 +34,7 @@ export function Inventory({ scanResult: initialScan, onSearchDownload }: Props) 
       i++;
     }, 80);
     return () => clearInterval(t);
-  }, [scanResult]);
+  }, [scanResult, refreshTick]);
 
   const toggle = (key: string) => setCollapsed(prev => prev.includes(key) ? prev.filter(c => c !== key) : [...prev, key]);
   const toggleSub = (key: string) => setSubCollapsed(prev => prev.includes(key) ? prev.filter(c => c !== key) : [...prev, key]);
@@ -86,12 +88,8 @@ export function Inventory({ scanResult: initialScan, onSearchDownload }: Props) 
     <div>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
         <h2>Software Inventory</h2>
-        <button onClick={async () => {
-          try {
-            const res = await api.getLatestInventory();
-            if (res?.scan_data) { setLinks({}); setScanResult(res.scan_data); }
-          } catch { /* ignore */ }
-        }} style={{ fontSize: 12, padding: '4px 12px', cursor: 'pointer' }}>Refresh</button>
+        <button onClick={() => setRefreshTick(t => t + 1)}
+          style={{ fontSize: 12, padding: '4px 12px', cursor: 'pointer' }}>Refresh</button>
       </div>
       <div style={{ display: 'flex', gap: 8, marginBottom: 14 }}>
         <input type="text" placeholder="Search software..." value={search}
