@@ -1,9 +1,5 @@
 import { useState, useMemo, useEffect } from 'react';
-
-
-
-
-import type { ScanResult, Application } from '../types';
+import type { ScanResult, Application, DownloadLink } from '../types';
 import { AppCard } from '../components/AppCard';
 import { api } from '../api/client';
 import { categorizeApp, CATEGORIES, findAppGroup, isSystemApp } from '../utils/categorize';
@@ -19,8 +15,24 @@ export function Inventory({ scanResult: initialScan, onSearchDownload }: Props) 
   const [search, setSearch] = useState('');
   const [filterCategory, setFilterCategory] = useState('全部');
   const [showSystem, setShowSystem] = useState(false);
+  const [links, setLinks] = useState<Record<string, DownloadLink>>({});
   const [collapsed, setCollapsed] = useState<string[]>([]);
   const [subCollapsed, setSubCollapsed] = useState<string[]>([]);
+
+  // Fetch download link status for visible apps
+  useEffect(() => {
+    if (!scanResult) return;
+    const names = [...new Set(scanResult.applications.map(a => a.name))];
+    let i = 0;
+    const t = setInterval(() => {
+      if (i >= names.length) { clearInterval(t); return; }
+      api.searchDownloadLinks(names[i]).then(r => {
+        if (r.length > 0) setLinks(p => ({ ...p, [names[i]]: r[0] }));
+      }).catch(() => {});
+      i++;
+    }, 80);
+    return () => clearInterval(t);
+  }, [scanResult]);
 
   const toggle = (key: string) => setCollapsed(prev => prev.includes(key) ? prev.filter(c => c !== key) : [...prev, key]);
   const toggleSub = (key: string) => setSubCollapsed(prev => prev.includes(key) ? prev.filter(c => c !== key) : [...prev, key]);
@@ -124,6 +136,8 @@ export function Inventory({ scanResult: initialScan, onSearchDownload }: Props) 
                         <div key={idx} style={{ paddingLeft: 12 }}>
                           <AppCard name={app.name} version={app.version} source={app.source}
                             publisher={app.publisher} installPath={app.install_path} installDate={app.install_date}
+                            downloadUrl={links[app.name]?.official_url} matched={!!links[app.name]}
+                            isCommunity={!!links[app.name]?.contributor_id}
                             onSearch={() => onSearchDownload(app.name)} />
                         </div>
                       ))}
@@ -133,6 +147,8 @@ export function Inventory({ scanResult: initialScan, onSearchDownload }: Props) 
                 {standalone.map((app, idx) => (
                   <AppCard key={'s' + idx} name={app.name} version={app.version} source={app.source}
                     publisher={app.publisher} installPath={app.install_path} installDate={app.install_date}
+                    downloadUrl={links[app.name]?.official_url} matched={!!links[app.name]}
+                    isCommunity={!!links[app.name]?.contributor_id}
                     onSearch={() => onSearchDownload(app.name)} />
                 ))}
               </div>
