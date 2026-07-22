@@ -88,8 +88,19 @@ export function Inventory({ scanResult: initialScan, onSearchDownload }: Props) 
     <div>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
         <h2>Software Inventory</h2>
-        <button onClick={() => setRefreshTick(t => t + 1)}
-          style={{ fontSize: 12, padding: '4px 12px', cursor: 'pointer' }}>Refresh</button>
+        <button onClick={async () => {
+          if (!scanResult) return;
+          setLinks({});
+          const names = [...new Set(scanResult.applications.map(a => a.name))];
+          const newLinks: Record<string, DownloadLink> = {};
+          for (let i = 0; i < names.length; i++) {
+            try {
+              const r = await api.searchDownloadLinks(names[i]);
+              if (r.length > 0) newLinks[names[i]] = r[0];
+            } catch (e: any) { console.warn('Search failed:', names[i], e?.message); }
+          }
+          setLinks(newLinks);
+        }} style={{ fontSize: 12, padding: '4px 12px', cursor: 'pointer' }}>Refresh</button>
       </div>
       <div style={{ display: 'flex', gap: 8, marginBottom: 14 }}>
         <input type="text" placeholder="Search software..." value={search}
