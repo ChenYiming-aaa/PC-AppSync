@@ -1,6 +1,7 @@
 import { useState, useRef, useCallback } from 'react';
 import { api } from '../api/client';
 import { openUrl } from '../api/scanner';
+import { API_BASE } from '../api/client';
 import { useLang } from '../utils/i18n';
 import { Mail, Lock, User, LogIn, UserPlus } from 'lucide-react';
 
@@ -28,7 +29,7 @@ export function LoginForm({ onLogin }: Props) {
     clickTimer.current = setTimeout(() => { clickCount.current = 0; }, 2000);
     if (clickCount.current >= 5) {
       clickCount.current = 0;
-      openUrl(window.location.origin + '/admin');
+      openUrl(API_BASE.replace('/api/v1', '') + '/admin');
     }
   }, []);
 

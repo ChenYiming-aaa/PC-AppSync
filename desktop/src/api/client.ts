@@ -1,6 +1,6 @@
 import type { DownloadLink, ScanResult, User, CompareResult } from '../types';
 
-const API_BASE = (import.meta.env.VITE_API_BASE as string) || 'https://pc-appsync-production.up.railway.app/api/v1';
+export const API_BASE = (import.meta.env.VITE_API_BASE as string) || 'https://pc-appsync-production.up.railway.app/api/v1';
 
 function getToken(): string | null {
   return localStorage.getItem('appsync_token');
