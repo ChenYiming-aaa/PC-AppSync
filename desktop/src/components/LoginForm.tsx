@@ -28,7 +28,7 @@ export function LoginForm({ onLogin }: Props) {
     clickTimer.current = setTimeout(() => { clickCount.current = 0; }, 2000);
     if (clickCount.current >= 5) {
       clickCount.current = 0;
-      openUrl('http://localhost:3000/admin');
+      openUrl(window.location.origin + '/admin');
     }
   }, []);
 
