@@ -12,7 +12,9 @@
     <img src="https://img.shields.io/badge/Rust-1.70%2B-000000?logo=rust" alt="Rust">
     <img src="https://img.shields.io/badge/React-19-61DAFB?logo=react" alt="React">
     <img src="https://img.shields.io/badge/Tauri-2-FFC131?logo=tauri" alt="Tauri">
-    <img src="https://img.shields.io/badge/license-MIT-blue" alt="License">
+    <img src="https://img.shields.io/github/license/ChenYiming-aaa/AppSync" alt="License">
+    <img src="https://img.shields.io/github/last-commit/ChenYiming-aaa/AppSync" alt="Last Commit">
+    <img src="https://img.shields.io/github/languages/code-size/ChenYiming-aaa/AppSync" alt="Code Size">
     <img src="https://img.shields.io/badge/PRs-welcome-brightgreen" alt="PRs Welcome">
   </p>
 </div>
@@ -184,8 +186,8 @@ npm run tauri build     # 生成 MSI/NSIS 安装包
 
 ### 贡献者
 
-<a href="https://github.com/owner/repo/graphs/contributors">
-  <img src="https://contrib.rocks/image?repo=owner/repo" alt="Contributors" />
+<a href="https://github.com/ChenYiming-aaa/AppSync/graphs/contributors">
+  <img src="https://contrib.rocks/image?repo=ChenYiming-aaa/AppSync" alt="Contributors" />
 </a>
 
 ## 许可证
