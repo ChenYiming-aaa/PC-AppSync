@@ -23,7 +23,7 @@ app.use(helmet({
   },
 }));
 app.use(cors({
-  origin: process.env.CORS_ORIGIN ? process.env.CORS_ORIGIN.split(',') : ['http://localhost:1420', 'http://localhost:3000'],
+  origin: process.env.CORS_ORIGIN ? process.env.CORS_ORIGIN.split(',') : ['http://localhost:1420', 'http://localhost:3000', 'tauri://localhost', 'https://tauri.localhost'],
   credentials: true,
 }));
 app.use(express.json({ limit: '10mb' }));
