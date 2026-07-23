@@ -20,11 +20,6 @@ export function fmtDate(ts: string): string {
   return isNaN(d.getTime()) ? ts : d.toLocaleDateString();
 }
 
-export function fmtShort(ts: string): string {
-  const d = parseScanTime(ts);
-  return isNaN(d.getTime()) ? ts : d.toLocaleDateString();
-}
-
 export function fmtFull(ts: string): { date: string; time: string; full: string; fullTime: string } {
   const d = parseScanTime(ts);
   if (isNaN(d.getTime())) return { date: 'unknown', time: '', full: 'unknown', fullTime: '' };

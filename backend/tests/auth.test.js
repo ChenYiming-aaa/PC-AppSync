@@ -1,8 +1,5 @@
-import { describe, it, expect, beforeAll, afterAll } from 'vitest';
+import { describe, it, expect, beforeAll } from 'vitest';
 import request from 'supertest';
-import fs from 'fs';
-
-const testDbPath = process.env.TEST_DB_PATH;
 
 let app;
 let token;
@@ -10,12 +7,6 @@ let userId;
 
 beforeAll(async () => {
   app = require('../src/index.js');
-});
-
-afterAll(() => {
-  if (testDbPath && fs.existsSync(testDbPath)) {
-    try { fs.unlinkSync(testDbPath); } catch {}
-  }
 });
 
 describe('POST /api/v1/auth/register', () => {

@@ -134,21 +134,46 @@ const iconMap = new Map([
   ['norton', 'norton'], ['avg', 'avg'], ['avast', 'avast'],
 ]);
 
+const ICON_CACHE_KEY = 'appsync_icon_cache';
+const MAX_CACHE_SIZE = 50;
+
+function loadCache(): Record<string, string> {
+  try { return JSON.parse(localStorage.getItem(ICON_CACHE_KEY) || '{}'); } catch { return {}; }
+}
+
+function saveCache(cache: Record<string, string>) {
+  try {
+    const entries = Object.entries(cache).slice(-MAX_CACHE_SIZE);
+    localStorage.setItem(ICON_CACHE_KEY, JSON.stringify(Object.fromEntries(entries)));
+  } catch {}
+}
+
+let iconCache = loadCache();
+
 function tryIcons(slug: string): string[] {
+  const cached = iconCache[slug];
+  if (cached) return [cached];
   return [
     `https://cdn.jsdelivr.net/npm/simple-icons@latest/icons/${slug}.svg`,
     `https://unpkg.com/simple-icons@latest/icons/${slug}.svg`,
   ];
 }
 
-export function getAppIconUrl(name: string): string[] {
+export function cacheIconSvg(slug: string, svg: string) {
+  iconCache[slug] = 'data:image/svg+xml;base64,' + btoa(svg);
+  saveCache(iconCache);
+}
+
+export function getIconSlug(name: string): string | undefined {
   const lower = name.toLowerCase();
   for (const [key, slug] of iconMap) {
-    if (lower.includes(key)) {
-      return tryIcons(slug);
-    }
+    if (lower.includes(key)) return slug;
   }
-  return [];
+}
+
+export function getAppIconUrl(name: string): string[] {
+  const slug = getIconSlug(name);
+  return slug ? tryIcons(slug) : [];
 }
 
 const DARK_BG = '#E8E8E8';

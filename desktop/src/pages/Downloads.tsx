@@ -1,6 +1,7 @@
 ﻿import { useState, useEffect, useMemo } from 'react';
 import type { ScanResult, DownloadLink } from '../types';
 import { AppCard } from '../components/AppCard';
+import { SubmitLinkForm } from '../components/SubmitLinkForm';
 import { CategoryDropdown } from '../components/CategoryDropdown';
 import { LinkLibrary } from '../components/LinkLibrary';
 import { api } from '../api/client';
@@ -8,7 +9,7 @@ import { openUrl } from '../api/scanner';
 import { toast } from '../components/Toast';
 import { categorizeApp } from '../utils/categorize';
 import { useLang } from '../utils/i18n';
-import { useDebounce, fmtShort } from '../utils/hooks';
+import { useDebounce, fmtDate } from '../utils/hooks';
 import { Search, RefreshCw, Download, CheckCircle, HelpCircle, Copy, BookOpen } from 'lucide-react';
 import { Pagination } from '../components/Pagination';
 
@@ -28,9 +29,7 @@ export function Downloads({ scanResult: initialScan }: Props) {
   const [matchedPage, setMatchedPage] = useState(1);
   const [unmatchedPage, setUnmatchedPage] = useState(1);
   const [inventories, setInventories] = useState<{ id: number; machine_name: string; scan_time: string }[]>([]);
-  const [submitApp, setSubmitApp] = useState<string | null>(null);
-  const [submitUrl, setSubmitUrl] = useState('');
-  const [submitMsg, setSubmitMsg] = useState('');
+
   const [selectedOtherId, setSelectedOtherId] = useState<number | null>(null);
   const [missingApps, setMissingApps] = useState<any[] | null>(null);
   const [diffMachine, setDiffMachine] = useState<string | null>(null);
@@ -92,16 +91,6 @@ export function Downloads({ scanResult: initialScan }: Props) {
     }
   };
 
-  const handleSubmit = async (appName: string) => {
-    if (!submitUrl) return;
-    try {
-      await api.submitDownloadLink({ software_name: appName, official_url: submitUrl, category: '' });
-      setSubmitMsg(t('appcard.submitted'));
-      setSubmitUrl('');
-      setTimeout(() => setSubmitMsg(''), 3000);
-    } catch (err: any) { setSubmitMsg(t('downloads.submitFailed') + ': ' + err.message); }
-  };
-
   return (
     <div>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 24 }}>
@@ -136,7 +125,7 @@ export function Downloads({ scanResult: initialScan }: Props) {
               setSelectedOtherId(isNaN(val) ? null : val);
             }} style={{ padding: '6px 12px', borderRadius: 100, border: '1px solid var(--md-outline-variant)', fontSize: 13, background: 'var(--md-surface)', maxWidth: 300 }}>
               {inventories.map(i => (
-                <option key={i.id} value={i.id}>{i.machine_name} ({fmtShort(i.scan_time)})</option>
+                <option key={i.id} value={i.id}>{i.machine_name} ({fmtDate(i.scan_time)})</option>
               ))}
             </select>
             {missingApps !== null && (
@@ -232,23 +221,7 @@ export function Downloads({ scanResult: initialScan }: Props) {
               <AppCard name={app.name} version={app.version} matched={false}
                 publisher={app.publisher} installPath={app.install_path} installDate={app.install_date}
                 onSearch={() => handleSearch(app.name)} />
-              <div style={{ marginLeft: 44, marginBottom: 8 }}>
-                {submitApp === app.name ? (
-                  <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
-                    <input type="text" placeholder={t('appcard.submitPlaceholder')} value={submitUrl}
-                      onChange={e => setSubmitUrl(e.target.value)}
-                      style={{ flex: 1, padding: '6px 12px', fontSize: 12, borderRadius: 8, border: '1px solid var(--md-outline-variant)' }} />
-                    <button className="md-btn-sm md-btn-filled" onClick={() => handleSubmit(app.name)} style={{ fontSize: 11, padding: '6px 14px' }}>{t('appcard.submit')}</button>
-                    <button className="md-btn-sm md-btn-outlined" onClick={() => { setSubmitApp(null); setSubmitUrl(''); }} style={{ fontSize: 11, padding: '6px 14px' }}>{t('appcard.cancel')}</button>
-                  </div>
-                ) : (
-                  <button onClick={() => setSubmitApp(app.name)}
-                    style={{ fontSize: 11, padding: '4px 12px', cursor: 'pointer', background: 'none', border: '1px dashed var(--md-outline)', borderRadius: 8, color: 'var(--md-on-surface-variant)' }}>
-                    {t('appcard.submitLink')}
-                  </button>
-                )}
-                {submitMsg && submitApp === app.name && <span style={{ fontSize: 11, color: 'var(--md-primary)', marginLeft: 8 }}>{submitMsg}</span>}
-              </div>
+              <SubmitLinkForm appName={app.name} hasLink={!!links[app.name]} />
             </div>
           ))}
           <Pagination page={unmatchedPage} pages={Math.ceil(unmatched.length / PAGE_SIZE)} onPage={setUnmatchedPage} />

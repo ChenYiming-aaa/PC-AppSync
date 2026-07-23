@@ -1,8 +1,5 @@
-import { describe, it, expect, beforeAll, afterAll } from 'vitest';
+import { describe, it, expect, beforeAll } from 'vitest';
 import request from 'supertest';
-import fs from 'fs';
-
-const testDbPath = process.env.TEST_DB_PATH;
 
 let app;
 let token;
@@ -10,16 +7,10 @@ let linkId;
 
 beforeAll(async () => {
   app = require('../src/index.js');
-    const res = await request(app)
-      .post('/api/v1/auth/register')
-      .send({ email: 'dl-test@test.com', password: 'test1234' });
+  const res = await request(app)
+    .post('/api/v1/auth/register')
+    .send({ email: 'dl-test@test.com', password: 'test1234' });
   token = res.body.token;
-});
-
-afterAll(() => {
-  if (testDbPath && fs.existsSync(testDbPath)) {
-    try { fs.unlinkSync(testDbPath); } catch {}
-  }
 });
 
 describe('POST /api/v1/downloads/links', () => {

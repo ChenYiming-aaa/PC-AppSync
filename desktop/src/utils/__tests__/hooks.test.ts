@@ -1,6 +1,6 @@
 import { describe, it, expect, vi } from 'vitest';
 import { renderHook, act } from '@testing-library/react';
-import { parseScanTime, fmtShort, fmtFull, useDebounce } from '../hooks';
+import { parseScanTime, fmtDate, fmtFull, useDebounce } from '../hooks';
 
 describe('parseScanTime', () => {
   it('parses millisecond string', () => {
@@ -28,15 +28,15 @@ describe('parseScanTime', () => {
   });
 });
 
-describe('fmtShort', () => {
+describe('fmtDate', () => {
   it('formats a valid timestamp', () => {
-    const result = fmtShort('1721721600000');
+    const result = fmtDate('1721721600000');
     expect(typeof result).toBe('string');
     expect(result.length).toBeGreaterThan(0);
   });
 
   it('returns raw string for invalid date', () => {
-    const result = fmtShort('garbage');
+    const result = fmtDate('garbage');
     expect(result).toBe('garbage');
   });
 });

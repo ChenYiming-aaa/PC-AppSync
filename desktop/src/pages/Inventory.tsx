@@ -1,6 +1,7 @@
 import { useState, useMemo, useEffect } from 'react';
 import type { ScanResult, Application, DownloadLink } from '../types';
 import { AppCard } from '../components/AppCard';
+import { SubmitLinkForm } from '../components/SubmitLinkForm';
 import { CategoryDropdown } from '../components/CategoryDropdown';
 import { api } from '../api/client';
 import { openUrl } from '../api/scanner';
@@ -26,9 +27,7 @@ export function Inventory({ scanResult: initialScan }: Props) {
   const [loadingLinks, setLoadingLinks] = useState(false);
   const [collapsed, setCollapsed] = useState<string[]>([]);
   const [subCollapsed, setSubCollapsed] = useState<string[]>([]);
-  const [submitApp, setSubmitApp] = useState<string | null>(null);
-  const [submitUrl, setSubmitUrl] = useState('');
-  const [submitMsg, setSubmitMsg] = useState('');
+
 
   useEffect(() => {
     if (!scanResult) return;
@@ -48,41 +47,6 @@ export function Inventory({ scanResult: initialScan }: Props) {
     } else {
       openUrl('https://www.bing.com/search?q=' + encodeURIComponent(appName + ' 官方下载'));
     }
-  };
-
-  const handleSubmit = async (appName: string) => {
-    if (!submitUrl) return;
-    try {
-      await api.submitDownloadLink({ software_name: appName, official_url: submitUrl, category: '' });
-      setSubmitMsg(t('appcard.submitted'));
-      setSubmitUrl('');
-      setTimeout(() => setSubmitMsg(''), 3000);
-    } catch (err: any) {
-      setSubmitMsg(t('inventory.submitFailed') + ': ' + err.message);
-    }
-  };
-
-  const renderSubmit = (appName: string) => {
-    if (links[appName]) return null;
-    return (
-      <div style={{ marginLeft: 44, marginBottom: 8 }}>
-        {submitApp === appName ? (
-          <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
-            <input type="text" placeholder={t('appcard.submitPlaceholder')} value={submitUrl}
-              onChange={e => setSubmitUrl(e.target.value)}
-              style={{ flex: 1, padding: '6px 12px', fontSize: 12, borderRadius: 8, border: '1px solid var(--md-outline-variant)' }} />
-            <button className="md-btn-sm md-btn-filled" onClick={() => handleSubmit(appName)} style={{ fontSize: 11, padding: '6px 14px' }}>{t('appcard.submit')}</button>
-            <button className="md-btn-sm md-btn-outlined" onClick={() => { setSubmitApp(null); setSubmitUrl(''); }} style={{ fontSize: 11, padding: '6px 14px' }}>{t('appcard.cancel')}</button>
-          </div>
-        ) : (
-          <button onClick={() => setSubmitApp(appName)}
-            style={{ fontSize: 11, padding: '4px 12px', cursor: 'pointer', background: 'none', border: '1px dashed var(--md-outline)', borderRadius: 8, color: 'var(--md-on-surface-variant)' }}>
-            {t('appcard.submitLink')}
-          </button>
-        )}
-        {submitMsg && submitApp === appName && <span style={{ fontSize: 11, color: 'var(--md-primary)', marginLeft: 8 }}>{submitMsg}</span>}
-      </div>
-    );
   };
 
   const toggle = (key: string) => setCollapsed(prev => prev.includes(key) ? prev.filter(c => c !== key) : [...prev, key]);
@@ -286,7 +250,7 @@ export function Inventory({ scanResult: initialScan }: Props) {
                                 downloadUrl={links[app.name]?.official_url} matched={!!links[app.name]}
                                 isCommunity={!!links[app.name]?.contributor_id} loading={loadingLinks}
                                 onSearch={() => handleSearch(app.name)} />
-                              {renderSubmit(app.name)}
+                              <SubmitLinkForm appName={app.name} hasLink={!!links[app.name]} />
                             </div>
                           ))}
                         </div>
@@ -301,7 +265,7 @@ export function Inventory({ scanResult: initialScan }: Props) {
                       downloadUrl={links[app.name]?.official_url} matched={!!links[app.name]}
                       isCommunity={!!links[app.name]?.contributor_id} loading={loadingLinks}
                       onSearch={() => handleSearch(app.name)} />
-                    {renderSubmit(app.name)}
+                    <SubmitLinkForm appName={app.name} hasLink={!!links[app.name]} />
                   </div>
                 ))}
               </div>

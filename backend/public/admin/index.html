@@ -343,17 +343,17 @@ let token = localStorage.getItem('admin_token');
 let currentUserId = null;
 let toastId = 0;
 
+var ICON_MAP = { success: '\u2713', error: '\u2715', info: '\u2139', warning: '\u26A0' };
+
 function showToast(message, type) {
   type = type || 'info';
   const container = document.getElementById('toastContainer');
   const id = ++toastId;
-  const el = document.createElement('div');
-  el.className = 'toast toast-' + type;
-  el.id = 'toast-' + id;
-  const icons = { success: '&#x2713;', error: '&#x2715;', info: '&#x2139;', warning: '&#x26A0;' };
-  el.innerHTML = '<span class="toast-icon">' + (icons[type] || icons.info) + '</span>' +
-    '<span>' + esc(message) + '</span>' +
-    '<button class="toast-close" onclick="removeToast(' + id + ')">&#x2715;</button>';
+  var el = h('div', {className: 'toast toast-' + type, id: 'toast-' + id}, [
+    h('span', {className: 'toast-icon'}, [ICON_MAP[type] || ICON_MAP.info]),
+    h('span', {}, [esc(message)]),
+    h('button', {className: 'toast-close', onclick: function() { removeToast(id); }}, ['\u2715']),
+  ]);
   container.appendChild(el);
   setTimeout(function() { removeToast(id); }, 3500);
 }
@@ -367,9 +367,18 @@ function removeToast(id) {
 
 function showConfirm(message, danger) {
   return new Promise(function(resolve) {
-    var overlay = document.createElement('div');
-    overlay.className = 'modal-overlay';
-    overlay.innerHTML = '<div class="modal-box"><div class="modal-header"><div class="modal-icon" style="background:var(--md-ref-orange-container)">&#x26A0;</div><h3>Confirm</h3></div><div class="modal-body">' + esc(message) + '</div><div class="modal-actions"><button class="btn-cancel" id="confirmCancel">Cancel</button><button class="' + (danger !== false ? 'btn-confirm-danger' : 'btn-confirm-ok') + '" id="confirmOk">' + (danger !== false ? 'Delete' : 'OK') + '</button></div></div>';
+    var box = h('div', {className: 'modal-box'}, [
+      h('div', {className: 'modal-header'}, [
+        h('div', {className: 'modal-icon', style: 'background:var(--md-ref-orange-container)'}, ['\u26A0']),
+        h('h3', {}, ['Confirm']),
+      ]),
+      h('div', {className: 'modal-body'}, [esc(message)]),
+      h('div', {className: 'modal-actions'}, [
+        h('button', {className: 'btn-cancel', id: 'confirmCancel'}, ['Cancel']),
+        h('button', {className: danger !== false ? 'btn-confirm-danger' : 'btn-confirm-ok', id: 'confirmOk'}, [danger !== false ? 'Delete' : 'OK']),
+      ]),
+    ]);
+    var overlay = h('div', {className: 'modal-overlay'}, [box]);
     document.body.appendChild(overlay);
     function close(result) {
       overlay.classList.add('modal-exit');
@@ -436,13 +445,34 @@ async function loadReview() {
   if (!r.ok) return;
   var list = await r.json();
   document.getElementById('tabReview').textContent = 'Pending Review (' + list.length + ')';
+  var panel = clearPanel('panelReview');
+
   if (list.length === 0) {
-    document.getElementById('panelReview').innerHTML = '<div class="empty-state"><div class="icon">&#x2705;</div><h3>All clear!</h3><p>No pending submissions. Every submitted link has been reviewed. Check back later for new submissions.</p></div>';
+    panel.appendChild(h('div', {className: 'empty-state'}, [
+      h('div', {className: 'icon'}, ['\u2705']),
+      h('h3', {}, ['All clear!']),
+      h('p', {}, ['No pending submissions. Every submitted link has been reviewed. Check back later for new submissions.']),
+    ]));
     return;
   }
-  document.getElementById('panelReview').innerHTML = list.map(function(l) {
-    return '<div class="card"><div class="info"><div class="name">' + esc(l.software_name) + '</div><div class="url">' + esc(l.official_url) + '</div><div class="meta">' + (l.category||'Uncategorized') + ' &middot; by ' + (l.contributor_email||'anonymous') + (l.aliases && l.aliases.length ? ' &middot; aliases: ' + l.aliases.join(', ') : '') + '</div></div><div class="actions"><button class="btn btn-approve" onclick="verify(' + l.id + ',true)">Approve</button><button class="btn btn-reject" onclick="verify(' + l.id + ',false)">Reject</button></div></div>';
-  }).join('');
+
+  list.forEach(function(l) {
+    var metaParts = [(l.category || 'Uncategorized'), '\u00b7 by ', (l.contributor_email || 'anonymous')];
+    if (l.aliases && l.aliases.length) metaParts.push(' \u00b7 aliases: ' + l.aliases.join(', '));
+
+    var card = h('div', {className: 'card'}, [
+      h('div', {className: 'info'}, [
+        h('div', {className: 'name'}, [esc(l.software_name)]),
+        h('div', {className: 'url'}, [esc(l.official_url)]),
+        h('div', {className: 'meta'}, metaParts),
+      ]),
+      h('div', {className: 'actions'}, [
+        h('button', {className: 'btn btn-approve', onclick: function() { verify(l.id, true); }}, ['Approve']),
+        h('button', {className: 'btn btn-reject', onclick: function() { verify(l.id, false); }}, ['Reject']),
+      ]),
+    ]);
+    panel.appendChild(card);
+  });
 }
 
 async function verify(id, ok) {
@@ -455,18 +485,44 @@ async function loadUsers() {
   var r = await req('/auth/users');
   if (!r.ok) return;
   var list = await r.json();
+  var panel = clearPanel('panelUsers');
+
   if (list.length === 0) {
-    document.getElementById('panelUsers').innerHTML = '<div class="empty-state"><div class="icon">&#x1F465;</div><h3>No users yet</h3><p>There are no registered users in the system right now.</p></div>';
+    panel.appendChild(h('div', {className: 'empty-state'}, [
+      h('div', {className: 'icon'}, ['\uD83D\uDC65']),
+      h('h3', {}, ['No users yet']),
+      h('p', {}, ['There are no registered users in the system right now.']),
+    ]));
     return;
   }
-  document.getElementById('panelUsers').innerHTML = list.map(function(u) {
+
+  list.forEach(function(u) {
     var isSelf = u.id === currentUserId;
-    return '<div class="card"><div class="info"><div class="name">' + esc(u.nickname||u.email) + ' <span style="font-weight:400;color:var(--md-on-surface-variant);font-size:13px">' + esc(u.email) + '</span>' + (u.is_admin ? ' <span style="font-size:10px;font-weight:500;background:var(--md-primary);color:var(--md-on-primary);padding:1px 7px;border-radius:4px">Admin</span>' : '') + (isSelf ? ' <span style="font-size:11px;color:var(--md-on-surface-variant)">(you)</span>' : '') + '</div><div class="meta">ID: ' + u.id + ' &middot; Inventories: ' + (u.inventory_count||0) + '</div></div><div class="actions">' +
-      (isSelf ? '<span style="font-size:11px;color:var(--md-on-surface-variant);padding:5px 8px">Cannot modify self</span>' :
-        (u.is_admin ? '<button class="btn btn-demote" onclick="toggleAdmin(' + u.id + ',false)">Demote</button>' : '<button class="btn btn-admin" onclick="toggleAdmin(' + u.id + ',true)">Make Admin</button>') +
-        '<button class="btn btn-del" onclick="delUser(' + u.id + ')">Delete</button>') +
-      '</div></div>';
-  }).join('');
+    var nameParts = [esc(u.nickname || u.email)];
+    nameParts.push(h('span', {style: 'font-weight:400;color:var(--md-on-surface-variant);font-size:13px'}, [' ' + esc(u.email)]));
+    if (u.is_admin) nameParts.push(h('span', {style: 'font-size:10px;font-weight:500;background:var(--md-primary);color:var(--md-on-primary);padding:1px 7px;border-radius:4px'}, ['Admin']));
+    if (isSelf) nameParts.push(h('span', {style: 'font-size:11px;color:var(--md-on-surface-variant)'}, [' (you)']));
+
+    var actions;
+    if (isSelf) {
+      actions = [h('span', {style: 'font-size:11px;color:var(--md-on-surface-variant);padding:5px 8px'}, ['Cannot modify self'])];
+    } else {
+      actions = [
+        u.is_admin
+          ? h('button', {className: 'btn btn-demote', onclick: function() { toggleAdmin(u.id, false); }}, ['Demote'])
+          : h('button', {className: 'btn btn-admin', onclick: function() { toggleAdmin(u.id, true); }}, ['Make Admin']),
+        h('button', {className: 'btn btn-del', onclick: function() { delUser(u.id); }}, ['Delete']),
+      ];
+    }
+
+    panel.appendChild(h('div', {className: 'card'}, [
+      h('div', {className: 'info'}, [
+        h('div', {className: 'name'}, nameParts),
+        h('div', {className: 'meta'}, ['ID: ' + u.id + ' \u00b7 Inventories: ' + (u.inventory_count || 0)]),
+      ]),
+      h('div', {className: 'actions'}, actions),
+    ]));
+  });
 }
 
 async function toggleAdmin(id, make) {
@@ -508,6 +564,20 @@ function switchTab(name) {
 }
 
 function esc(s) { var d = document.createElement('div'); d.textContent = s || ''; return d.innerHTML; }
+
+function h(tag, attrs, children) {
+  var el = document.createElement(tag);
+  if (attrs) for (var k in attrs) { if (k === 'className') el.className = attrs[k]; else if (k === 'onclick') el.onclick = attrs[k]; else el.setAttribute(k, attrs[k]); }
+  if (typeof children === 'string') { el.textContent = children; }
+  else if (children) { children.forEach(function(c) { if (typeof c === 'string') el.appendChild(document.createTextNode(c)); else if (c) el.appendChild(c); }); }
+  return el;
+}
+
+function clearPanel(id) {
+  var p = document.getElementById(id);
+  while (p.firstChild) p.removeChild(p.firstChild);
+  return p;
+}
 
 if (token) {
   fetch(API + '/auth/profile', { headers: { 'Authorization': 'Bearer ' + token } })

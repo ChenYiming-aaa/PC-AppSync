@@ -1,7 +1,7 @@
-import { useState, memo, useCallback } from 'react';
+import { useState, useEffect, memo } from 'react';
 import { openUrl } from '../api/scanner';
 import { categorizeApp, getAppIconUrl, getFallbackIcon } from '../utils/categorize';
-import { isDarkBg } from '../utils/icons';
+import { isDarkBg, cacheIconSvg, getIconSlug } from '../utils/icons';
 import { useLang } from '../utils/i18n';
 import { ExternalLink, Search, ChevronDown, ChevronUp } from 'lucide-react';
 
@@ -21,29 +21,48 @@ interface Props {
 
 const AppIcon = memo(function AppIcon({ name }: { name: string }) {
   const urls = getAppIconUrl(name);
-  const [imgError, setImgError] = useState<Set<number>>(new Set());
+  const [src, setSrc] = useState<string | null>(urls[0] || null);
+  const [tried, setTried] = useState<Set<number>>(new Set());
   const fb = getFallbackIcon(name);
   const dark = isDarkBg();
 
-  const onErr = useCallback((idx: number) => {
-    setImgError(prev => new Set([...prev, idx]));
-  }, []);
+  useEffect(() => {
+    setSrc(urls[0] || null);
+    setTried(new Set());
+  }, [name]);
 
-  if (urls.length > 0) {
-    const currentIdx = imgError.size;
-    if (currentIdx < urls.length) {
-      return (
-        <img
-          src={urls[currentIdx]}
-          alt=""
-          style={{
-            width: 24, height: 24, objectFit: 'contain', flexShrink: 0, borderRadius: 4,
-            filter: dark ? 'invert(1) brightness(1.5)' : 'none',
-          }}
-          onError={() => onErr(currentIdx)}
-        />
-      );
-    }
+  useEffect(() => {
+    if (!src || !src.startsWith('http')) return;
+    const slug = getIconSlug(name);
+    if (!slug) return;
+    fetch(src).then(r => {
+      if (!r.ok) throw new Error('fetch failed');
+      return r.text();
+    }).then(svg => {
+      cacheIconSvg(slug, svg);
+      setSrc('data:image/svg+xml;base64,' + btoa(svg));
+    }).catch(() => {
+      const nextIdx = tried.size;
+      if (nextIdx < urls.length - 1) {
+        setTried(prev => new Set([...prev, nextIdx]));
+        setSrc(urls[nextIdx + 1]);
+      } else {
+        setSrc(null);
+      }
+    });
+  }, [src, tried]);
+
+  if (src) {
+    return (
+      <img
+        src={src}
+        alt=""
+        style={{
+          width: 24, height: 24, objectFit: 'contain', flexShrink: 0, borderRadius: 4,
+          filter: dark ? 'invert(1) brightness(1.5)' : 'none',
+        }}
+      />
+    );
   }
 
   return (
