@@ -1,0 +1,14 @@
+{
+  "build": {
+    "builder": "NIXPACKS",
+    "buildCommand": "cd backend && npm install",
+    "watchPatterns": ["backend/**"],
+    "rootDirectory": "backend"
+  },
+  "deploy": {
+    "startCommand": "node src/index.js",
+    "healthcheckPath": "/api/v1/health",
+    "restartPolicyType": "on_failure",
+    "restartPolicyMaxRetries": 10
+  }
+}
