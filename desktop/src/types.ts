@@ -38,22 +38,15 @@ export interface CompareResult {
   missing_count: number;
 }
 
-export interface DeepScan {
-  vscode_extensions: Package[];
-  path_entries: string[];
-  wsl_distributions: Package[];
-  windows_features: Package[];
-}
-
 export interface ScanResult {
   version: string;
   machine_name: string;
   scan_time: string;
   scan_mode: string;
+  scan_duration_ms?: number;
   os: OsInfo;
   applications: Application[];
   runtimes: Runtime[];
-  deep_scan?: DeepScan;
 }
 
 export interface DownloadLink {

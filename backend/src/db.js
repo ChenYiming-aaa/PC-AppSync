@@ -5,7 +5,7 @@ const fs = require('fs');
 const dbDir = path.join(__dirname, '..', 'data');
 if (!fs.existsSync(dbDir)) fs.mkdirSync(dbDir, { recursive: true });
 
-const dbPath = path.join(dbDir, 'appsync.db');
+const dbPath = process.env.TEST_DB_PATH || path.join(dbDir, 'appsync.db');
 const db = new Database(dbPath);
 
 // Enable WAL mode for better performance
@@ -20,6 +20,7 @@ function init() {
       password_hash TEXT NOT NULL,
       nickname TEXT,
       is_admin INTEGER DEFAULT 0,
+      token_version INTEGER DEFAULT 0,
       created_at TEXT DEFAULT (datetime('now')),
       updated_at TEXT DEFAULT (datetime('now'))
     );
@@ -53,6 +54,7 @@ function init() {
     CREATE INDEX IF NOT EXISTS idx_download_links_name ON download_links(software_name);
     CREATE INDEX IF NOT EXISTS idx_download_links_verified ON download_links(verified);
   `);
+  try { db.exec('ALTER TABLE users ADD COLUMN token_version INTEGER DEFAULT 0'); } catch {}
   console.log('Database initialized');
 }
 
@@ -68,7 +70,7 @@ module.exports = {
       } else {
         const stmt = db.prepare(sql);
         const info = stmt.run(...params);
-        return { rows: [{ id: info.lastInsertRowid }], changes: info.changes };
+        return { rows: [{ id: Number(info.lastInsertRowid) }], changes: info.changes };
       }
     } catch (err) {
       console.error('SQLite error:', err.message);

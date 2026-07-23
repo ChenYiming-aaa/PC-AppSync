@@ -1,21 +1,32 @@
-import { useState, useEffect, useMemo } from 'react';
+﻿import { useState, useEffect, useMemo } from 'react';
 import type { ScanResult, DownloadLink } from '../types';
 import { AppCard } from '../components/AppCard';
+import { CategoryDropdown } from '../components/CategoryDropdown';
+import { LinkLibrary } from '../components/LinkLibrary';
 import { api } from '../api/client';
 import { openUrl } from '../api/scanner';
-import { categorizeApp, CATEGORIES } from '../utils/categorize';
+import { toast } from '../components/Toast';
+import { categorizeApp } from '../utils/categorize';
+import { useLang } from '../utils/i18n';
+import { useDebounce, fmtShort } from '../utils/hooks';
+import { Search, RefreshCw, Download, CheckCircle, HelpCircle, Copy, BookOpen } from 'lucide-react';
+import { Pagination } from '../components/Pagination';
 
-interface Props {
-  scanResult: ScanResult | null;
-}
+interface Props { scanResult: ScanResult | null; }
+
+const PAGE_SIZE = 10;
 
 export function Downloads({ scanResult: initialScan }: Props) {
   const [scanResult, setScanResult] = useState(initialScan);
   useEffect(() => setScanResult(initialScan), [initialScan]);
+  const { t } = useLang();
   const [links, setLinks] = useState<Record<string, DownloadLink>>({});
   const [filter, setFilter] = useState<'all' | 'matched' | 'unmatched'>('all');
   const [search, setSearch] = useState('');
+  const debouncedSearch = useDebounce(search, 200);
   const [categoryFilter, setCategoryFilter] = useState('全部');
+  const [matchedPage, setMatchedPage] = useState(1);
+  const [unmatchedPage, setUnmatchedPage] = useState(1);
   const [inventories, setInventories] = useState<{ id: number; machine_name: string; scan_time: string }[]>([]);
   const [submitApp, setSubmitApp] = useState<string | null>(null);
   const [submitUrl, setSubmitUrl] = useState('');
@@ -23,82 +34,59 @@ export function Downloads({ scanResult: initialScan }: Props) {
   const [selectedOtherId, setSelectedOtherId] = useState<number | null>(null);
   const [missingApps, setMissingApps] = useState<any[] | null>(null);
   const [diffMachine, setDiffMachine] = useState<string | null>(null);
+  const [viewMode, setViewMode] = useState<'current' | 'diff'>('current');
+  const [showLibrary, setShowLibrary] = useState(false);
+  const [refreshKey, setRefreshKey] = useState(0);
 
-  // Fetch available inventories for comparison
-  useEffect(() => {
+  useEffect(() => { setMatchedPage(1); setUnmatchedPage(1); }, [search, categoryFilter, filter, missingApps]);
+
+  const loadInventories = () => {
     api.listInventories().then(list => {
-      const sorted = list.sort((a, b) => new Date(b.scan_time).getTime() - new Date(a.scan_time).getTime());
-      setInventories(sorted);
-      if (sorted.length > 1 && !selectedOtherId) {
-        // Select the most recent different machine
-        const currentMachine = scanResult?.machine_name;
-        const other = sorted.find(i => i.machine_name !== currentMachine) || sorted[1];
+      setInventories(list);
+      if (list.length > 1 && !selectedOtherId) {
+        const cur = scanResult?.machine_name;
+        const other = list.find(i => i.machine_name !== cur) || list[1];
         if (other) setSelectedOtherId(other.id);
       }
-    }).catch(() => {});
-  }, [scanResult]);
+    }).catch(err => { console.warn('Load inventories failed:', err); toast(t('downloads.loadFailed'), 'error'); });
+  };
 
-  // Fetch comparison when selected other inventory changes
+  useEffect(() => { loadInventories(); }, [scanResult, refreshKey]);
+
   useEffect(() => {
     if (!selectedOtherId) { setMissingApps(null); return; }
     api.compareInventories(selectedOtherId).then(data => {
       setMissingApps(data.missing_apps);
       setDiffMachine(data.other_machine);
-      // Also fetch download links for the missing apps
-      data.missing_apps.forEach(app => {
-        api.searchDownloadLinks(app.name).then(results => {
-          if (results.length > 0) {
-            setLinks(prev => ({ ...prev, [app.name]: results[0] }));
-          }
-        });
-      });
+      const names = [...new Set(data.missing_apps.map(a => a.name))];
+      if (names.length > 0) api.batchMatchLinks(names).then(r => setLinks(p => ({ ...p, ...r }))).catch(err => console.warn('Match links failed:', err));
     }).catch(() => setMissingApps(null));
   }, [selectedOtherId]);
 
-  // Fetch download links for current machine's apps
   useEffect(() => {
     if (!scanResult) return;
-    scanResult.applications.forEach(app => {
-      api.searchDownloadLinks(app.name).then(results => {
-        if (results.length > 0) {
-          setLinks(prev => ({ ...prev, [app.name]: results[0] }));
-        }
-      });
-    });
+    const names = [...new Set(scanResult.applications.map(a => a.name))];
+    if (names.length > 0) api.batchMatchLinks(names).then(r => setLinks(p => ({ ...p, ...r }))).catch(err => console.warn('Match links failed:', err));
   }, [scanResult]);
 
-  const displayApps = missingApps || scanResult?.applications || [];
-
-  const matchCount = useMemo(
-    () => displayApps.filter(a => !!links[a.name]).length ?? 0,
-    [displayApps, links]
-  );
+  const currentApps = scanResult?.applications || [];
+  const displayApps = (viewMode === 'diff' && missingApps) ? missingApps : currentApps;
+  const matchCount = useMemo(() => displayApps.filter(a => !!links[a.name]).length ?? 0, [displayApps, links]);
   const total = displayApps.length;
 
-  const filtered = useMemo(() => {
-    return displayApps
-      .filter(app => app.name.toLowerCase().includes(search.toLowerCase()))
-      .filter(app => {
-        if (categoryFilter !== '全部') {
-          const cat = categorizeApp(app.name);
-          if (cat.category !== categoryFilter) return false;
-        }
-        return true;
-      })
-      .filter(app => {
-        if (filter === 'matched') return !!links[app.name];
-        if (filter === 'unmatched') return !links[app.name];
-        return true;
-      });
-  }, [displayApps, links, filter, search, categoryFilter]);
+  const filtered = useMemo(() => displayApps
+    .filter(a => a.name.toLowerCase().includes(debouncedSearch.toLowerCase()))
+    .filter(a => categoryFilter === '全部' || categorizeApp(a.name).category === categoryFilter)
+    .filter(a => filter === 'all' || (filter === 'matched' ? !!links[a.name] : !links[a.name]))
+  , [displayApps, links, filter, debouncedSearch, categoryFilter]);
 
-  const matched = filtered.filter(app => !!links[app.name]);
-  const unmatched = filtered.filter(app => !links[app.name]);
+  const matched = filtered.filter(a => !!links[a.name]);
+  const unmatched = filtered.filter(a => !links[a.name]);
 
   const handleSearch = async (appName: string) => {
     const results = await api.searchDownloadLinks(appName);
     if (results.length > 0) {
-      setLinks(prev => ({ ...prev, [appName]: results[0] }));
+      setLinks(p => ({ ...p, [appName]: results[0] }));
     } else {
       openUrl('https://www.bing.com/search?q=' + encodeURIComponent(appName + ' 官方下载'));
     }
@@ -108,142 +96,167 @@ export function Downloads({ scanResult: initialScan }: Props) {
     if (!submitUrl) return;
     try {
       await api.submitDownloadLink({ software_name: appName, official_url: submitUrl, category: '' });
-      setSubmitMsg('Submitted! Admin will review it.');
+      setSubmitMsg(t('appcard.submitted'));
       setSubmitUrl('');
       setTimeout(() => setSubmitMsg(''), 3000);
-    } catch (err: any) {
-      setSubmitMsg('Failed: ' + err.message);
-    }
+    } catch (err: any) { setSubmitMsg(t('downloads.submitFailed') + ': ' + err.message); }
   };
 
   return (
     <div>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-        <h2>Downloads</h2>
-        <button onClick={async () => {
-          try {
-            const res = await api.getLatestInventory();
-            if (res?.scan_data) { setLinks({}); setScanResult(res.scan_data); }
-          } catch { /* ignore */ }
-        }} style={{ fontSize: 12, padding: '4px 12px', cursor: 'pointer' }}>Refresh</button>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 24 }}>
+        <div>
+          <h2 style={{ color: 'var(--md-on-surface)', marginBottom: 4, display: 'flex', alignItems: 'center', gap: 8 }}>
+            <Download size={24} color="var(--md-primary)" /> {t('downloads.title')}
+          </h2>
+          <p style={{ color: 'var(--md-on-surface-variant)', fontSize: 14, margin: '4px 0 0' }}>
+            {viewMode === 'diff' && missingApps ? `${missingApps.length} ${t('downloads.appsMissing')} ${diffMachine}` : `${total} ${t('downloads.appsOnMachine')}`}
+          </p>
+        </div>
+        <div style={{ display: 'flex', gap: 6 }}>
+          <button className="md-btn-sm md-btn-tonal" onClick={() => setShowLibrary(true)}>
+            <BookOpen size={16} /> {t('downloads.linkLibrary')}
+          </button>
+          <button className="md-btn-text" onClick={async () => {
+            try { const r = await api.getLatestInventory(); if (r?.scan_data) { setLinks({}); setScanResult(r.scan_data); } }
+            catch (err) { console.warn('Refresh failed:', err); toast(t('downloads.refreshFailed'), 'error'); }
+            setRefreshKey(k => k + 1);
+          }}><RefreshCw size={16} /> {t('downloads.refresh')}</button>
+        </div>
       </div>
 
-      {/* Cross-device comparison selector */}
       {inventories.length > 1 && (
-        <div style={{ marginBottom: 14, padding: 10, background: '#f8f9ff', borderRadius: 8, border: '1px solid #d0d7ff' }}>
-          <label style={{ fontSize: 13, fontWeight: 'bold' }}>Compare with old machine:</label>
-          <select value={selectedOtherId || ''} onChange={e => {
-            const val = parseInt(e.target.value, 10);
-            setSelectedOtherId(isNaN(val) ? null : val);
-          }}
-            style={{ marginLeft: 8, padding: '4px 8px' }}>
-            {inventories.filter(i => i.id !== inventories[0]?.id).map(i => (
-              <option key={i.id} value={i.id}>{i.machine_name} ({new Date(i.scan_time).toLocaleDateString()})</option>
-            ))}
-          </select>
-          {missingApps !== null && (
-            <span style={{ marginLeft: 12, fontSize: 13, color: '#c62828' }}>
-              {missingApps.length} apps missing on this machine
-              {diffMachine && <span style={{ color: '#666' }}> from {diffMachine}</span>}
+        <div style={{ marginBottom: 20, padding: 16, background: 'var(--md-surface-container)', borderRadius: 16, border: '1px solid var(--md-outline-variant)' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
+            <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--md-on-surface)', display: 'flex', alignItems: 'center', gap: 6 }}>
+              <RefreshCw size={16} /> {t('downloads.compare')}
             </span>
-          )}
-          {missingApps === null && selectedOtherId && (
-            <span style={{ marginLeft: 12, fontSize: 13, color: '#999' }}>Loading comparison...</span>
-          )}
+            <select value={selectedOtherId || ''} onChange={e => {
+              const val = parseInt(e.target.value, 10);
+              setSelectedOtherId(isNaN(val) ? null : val);
+            }} style={{ padding: '6px 12px', borderRadius: 100, border: '1px solid var(--md-outline-variant)', fontSize: 13, background: 'var(--md-surface)', maxWidth: 300 }}>
+              {inventories.map(i => (
+                <option key={i.id} value={i.id}>{i.machine_name} ({fmtShort(i.scan_time)})</option>
+              ))}
+            </select>
+            {missingApps !== null && (
+              <div style={{ display: 'flex', gap: 4, background: 'var(--md-surface)', borderRadius: 100, padding: 3 }}>
+                <button onClick={() => setViewMode('current')}
+                  style={{
+                    padding: '4px 14px', borderRadius: 100, border: 'none', fontSize: 12,
+                    background: viewMode === 'current' ? 'var(--md-primary)' : 'transparent',
+                    color: viewMode === 'current' ? '#fff' : 'var(--md-on-surface)',
+                    cursor: 'pointer', fontWeight: 500,
+                  }}>{t('downloads.current')} ({currentApps.length})</button>
+                <button onClick={() => setViewMode('diff')}
+                  style={{
+                    padding: '4px 14px', borderRadius: 100, border: 'none', fontSize: 12,
+                    background: viewMode === 'diff' ? 'var(--md-error)' : 'transparent',
+                    color: viewMode === 'diff' ? '#fff' : 'var(--md-on-surface)',
+                    cursor: 'pointer', fontWeight: 500,
+                  }}>{t('downloads.missing')} ({missingApps.length})</button>
+              </div>
+            )}
+            {missingApps === null && selectedOtherId && <span style={{ fontSize: 13, color: 'var(--md-on-surface-variant)' }}>{t('downloads.loading')}</span>}
+          </div>
         </div>
       )}
 
-      {missingApps && (
-        <div style={{ display: 'flex', gap: 6, marginBottom: 10 }}>
-          <button onClick={() => { setMissingApps(null); setSelectedOtherId(null); }}
-            style={{ padding: '4px 12px', cursor: 'pointer', fontSize: 12 }}>
-            Show all current apps
-          </button>
+      <div style={{ display: 'flex', gap: 8, marginBottom: 20 }}>
+        <div style={{ flex: 1, position: 'relative' }}>
+          <Search size={16} style={{ position: 'absolute', left: 14, top: '50%', transform: 'translateY(-50%)', color: 'var(--md-on-surface-variant)' }} />
+          <input type="text" placeholder={t('downloads.search')} value={search}
+            onChange={e => setSearch(e.target.value)}
+            style={{ width: '100%', padding: '10px 14px 10px 40px', borderRadius: 100, border: '1px solid var(--md-outline-variant)', background: 'var(--md-surface)' }} />
         </div>
-      )}
-
-      <div style={{ display: 'flex', gap: 8, marginBottom: 14 }}>
-        <input type="text" placeholder="Search by name..." value={search}
-          onChange={e => setSearch(e.target.value)}
-          style={{ flex: 1, padding: '8px 12px', borderRadius: 6, border: '1px solid #ccc' }} />
-        <select value={categoryFilter} onChange={e => setCategoryFilter(e.target.value)}
-          style={{ padding: '8px 12px', borderRadius: 6, border: '1px solid #ccc' }}>
-          <option value="全部">All Types</option>
-          {CATEGORIES.filter(c => !c.system).map(c => <option key={c.name} value={c.name}>{c.icon} {c.name}</option>)}
-          <option value="其他">📦 Other</option>
-        </select>
+        <CategoryDropdown value={categoryFilter} onChange={setCategoryFilter} allLabel={t('downloads.allTypes')} />
       </div>
 
-      <div style={{ display: 'flex', gap: 6, marginBottom: 14 }}>
-        {(['all', 'matched', 'unmatched'] as const).map(f => (
-          <button key={f} onClick={() => setFilter(f)}
-            style={{
-              padding: '4px 16px', cursor: 'pointer',
-              fontWeight: filter === f ? 'bold' : 'normal',
-              background: filter === f ? '#e0e0e0' : 'transparent',
-              border: '1px solid #ccc', borderRadius: 16
-            }}>
-            {f === 'all' ? `All (${total})` : f === 'matched' ? `Matched (${matchCount})` : `Unmatched (${total - matchCount})`}
-          </button>
-        ))}
+      <div style={{ display: 'flex', gap: 8, marginBottom: 20 }}>
+        {(['all', 'matched', 'unmatched'] as const).map(f => {
+          const active = filter === f;
+          return (
+            <div
+              key={f}
+              onClick={() => setFilter(f)}
+              style={{
+                padding: '8px 20px', borderRadius: 100, fontSize: 13, fontWeight: 500,
+                background: active ? 'var(--md-primary)' : 'var(--md-surface)',
+                color: active ? '#fff' : 'var(--md-on-surface)',
+                border: '1px solid ' + (active ? 'var(--md-primary)' : 'var(--md-outline-variant)'),
+                cursor: 'pointer', transition: 'all 0.15s ease',
+                display: 'inline-flex', alignItems: 'center', gap: 6, userSelect: 'none',
+                position: 'relative',
+                transform: active ? 'scale(1.02)' : 'scale(1)',
+                boxShadow: active ? 'var(--md-elevation-1)' : 'none',
+              }}
+            >
+              {f === 'all' ? <Download size={14} /> : f === 'matched' ? <CheckCircle size={14} /> : <HelpCircle size={14} />}
+              {f === 'all' ? t('downloads.all') + ' (' + total + ')' : f === 'matched' ? t('downloads.matched') + ' (' + matchCount + ')' : t('downloads.unmatched') + ' (' + (total - matchCount) + ')'}
+              {active && <div style={{ position: 'absolute', bottom: -4, left: '20%', right: '20%', height: 2, borderRadius: 1, background: 'var(--md-primary)' }} />}
+            </div>
+          );
+        })}
       </div>
 
-      {missingApps && <p style={{ color: '#c62828', fontSize: 13 }}>These apps are on your old machine but not on this one:</p>}
+      {viewMode === 'diff' && missingApps && <p style={{ color: 'var(--md-error)', fontSize: 13, marginBottom: 12 }}>{t('downloads.diffHint')}</p>}
 
       {matched.length > 0 && (
-        <>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', margin: '8px 0' }}>
-            <p style={{ color: '#2e7d32', fontSize: 13, margin: 0 }}>--- Matched (Auto-link) ---</p>
-            <button onClick={() => {
+        <div style={{ marginBottom: 24 }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
+            <h3 style={{ color: 'var(--md-primary)', fontSize: 14, fontWeight: 600, display: 'flex', alignItems: 'center', gap: 6 }}>
+              <CheckCircle size={18} /> {t('downloads.matchedCount', { count: matched.length })}
+            </h3>
+            <button className="md-btn-sm md-btn-tonal" onClick={() => {
               const urls = matched.map(a => `${a.name}: ${links[a.name]?.official_url || ''}`).join('\n');
-              navigator.clipboard.writeText(urls)
-                .then(() => alert('Copied ' + matched.length + ' URLs!'))
-                .catch(() => alert('Failed to copy to clipboard'));
-            }} style={{ fontSize: 11, padding: '2px 8px', cursor: 'pointer' }}>
-              Copy All Links
-            </button>
+              navigator.clipboard.writeText(urls).then(() => toast(t('downloads.copiedUrls', { n: matched.length }), 'success')).catch(() => toast(t('downloads.copyFailed'), 'error'));
+            }}><Copy size={14} /> {t('downloads.copyAll')}</button>
           </div>
-          {matched.map((app, i) => (
+          {matched.slice((matchedPage - 1) * PAGE_SIZE, matchedPage * PAGE_SIZE).map((app, i) => (
             <AppCard key={i} name={app.name} version={app.version}
               downloadUrl={links[app.name]?.official_url} matched={true}
               isCommunity={!!links[app.name]?.contributor_id}
               publisher={app.publisher} installPath={app.install_path} installDate={app.install_date} />
           ))}
-        </>
+          <Pagination page={matchedPage} pages={Math.ceil(matched.length / PAGE_SIZE)} onPage={setMatchedPage} />
+        </div>
       )}
 
       {unmatched.length > 0 && (
-        <>
-          <p style={{ color: '#c62828', fontSize: 13, margin: '8px 0' }}>--- Unmatched (Search Required) ---</p>
-          {unmatched.map((app, i) => (
+        <div>
+            <h3 style={{ color: 'var(--md-on-surface-variant)', fontSize: 14, fontWeight: 600, marginBottom: 12, display: 'flex', alignItems: 'center', gap: 6 }}>
+              <HelpCircle size={18} /> {t('downloads.unmatchedCount', { count: unmatched.length })}
+          </h3>
+          {unmatched.slice((unmatchedPage - 1) * PAGE_SIZE, unmatchedPage * PAGE_SIZE).map((app, i) => (
             <div key={i}>
               <AppCard name={app.name} version={app.version} matched={false}
                 publisher={app.publisher} installPath={app.install_path} installDate={app.install_date}
                 onSearch={() => handleSearch(app.name)} />
-              <div style={{ marginLeft: 36, marginBottom: 6 }}>
+              <div style={{ marginLeft: 44, marginBottom: 8 }}>
                 {submitApp === app.name ? (
-                  <div style={{ display: 'flex', gap: 4, alignItems: 'center' }}>
-                    <input type="text" placeholder="Paste official download URL..." value={submitUrl}
+                  <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
+                    <input type="text" placeholder={t('appcard.submitPlaceholder')} value={submitUrl}
                       onChange={e => setSubmitUrl(e.target.value)}
-                      style={{ flex: 1, padding: '4px 8px', fontSize: 12, border: '1px solid #ccc', borderRadius: 4 }} />
-                    <button onClick={() => handleSubmit(app.name)} style={{ fontSize: 11, padding: '3px 8px', cursor: 'pointer' }}>Submit</button>
-                    <button onClick={() => { setSubmitApp(null); setSubmitUrl(''); }} style={{ fontSize: 11, padding: '3px 8px', cursor: 'pointer' }}>Cancel</button>
+                      style={{ flex: 1, padding: '6px 12px', fontSize: 12, borderRadius: 8, border: '1px solid var(--md-outline-variant)' }} />
+                    <button className="md-btn-sm md-btn-filled" onClick={() => handleSubmit(app.name)} style={{ fontSize: 11, padding: '6px 14px' }}>{t('appcard.submit')}</button>
+                    <button className="md-btn-sm md-btn-outlined" onClick={() => { setSubmitApp(null); setSubmitUrl(''); }} style={{ fontSize: 11, padding: '6px 14px' }}>{t('appcard.cancel')}</button>
                   </div>
                 ) : (
-                  <button onClick={() => setSubmitApp(app.name)} style={{ fontSize: 11, padding: '2px 8px', cursor: 'pointer', color: '#666' }}>
-                    + Submit official link
+                  <button onClick={() => setSubmitApp(app.name)}
+                    style={{ fontSize: 11, padding: '4px 12px', cursor: 'pointer', background: 'none', border: '1px dashed var(--md-outline)', borderRadius: 8, color: 'var(--md-on-surface-variant)' }}>
+                    {t('appcard.submitLink')}
                   </button>
                 )}
-                {submitMsg && submitApp === app.name && (
-                  <span style={{ fontSize: 11, color: '#2e7d32', marginLeft: 8 }}>{submitMsg}</span>
-                )}
+                {submitMsg && submitApp === app.name && <span style={{ fontSize: 11, color: 'var(--md-primary)', marginLeft: 8 }}>{submitMsg}</span>}
               </div>
             </div>
           ))}
-        </>
+          <Pagination page={unmatchedPage} pages={Math.ceil(unmatched.length / PAGE_SIZE)} onPage={setUnmatchedPage} />
+        </div>
       )}
 
-      {filtered.length === 0 && <p style={{ color: '#999' }}>No apps found.</p>}
+      {filtered.length === 0 && <p style={{ color: 'var(--md-on-surface-variant)', textAlign: 'center', padding: 60 }}>{t('downloads.noAppsFound')}</p>}
+      {showLibrary && <LinkLibrary onClose={() => setShowLibrary(false)} />}
     </div>
   );
 }

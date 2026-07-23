@@ -1,6 +1,9 @@
-import { useState, memo } from 'react';
+import { useState, memo, useCallback } from 'react';
 import { openUrl } from '../api/scanner';
-import { categorizeApp } from '../utils/categorize';
+import { categorizeApp, getAppIconUrl, getFallbackIcon } from '../utils/categorize';
+import { isDarkBg } from '../utils/icons';
+import { useLang } from '../utils/i18n';
+import { ExternalLink, Search, ChevronDown, ChevronUp } from 'lucide-react';
 
 interface Props {
   name: string;
@@ -9,74 +12,150 @@ interface Props {
   downloadUrl?: string;
   matched?: boolean;
   onSearch?: () => void;
-  /** Whether this link was community-submitted */
   isCommunity?: boolean;
-  /** Expandable details */
+  loading?: boolean;
   publisher?: string;
   installPath?: string;
   installDate?: string;
 }
 
+const AppIcon = memo(function AppIcon({ name }: { name: string }) {
+  const urls = getAppIconUrl(name);
+  const [imgError, setImgError] = useState<Set<number>>(new Set());
+  const fb = getFallbackIcon(name);
+  const dark = isDarkBg();
+
+  const onErr = useCallback((idx: number) => {
+    setImgError(prev => new Set([...prev, idx]));
+  }, []);
+
+  if (urls.length > 0) {
+    const currentIdx = imgError.size;
+    if (currentIdx < urls.length) {
+      return (
+        <img
+          src={urls[currentIdx]}
+          alt=""
+          style={{
+            width: 24, height: 24, objectFit: 'contain', flexShrink: 0, borderRadius: 4,
+            filter: dark ? 'invert(1) brightness(1.5)' : 'none',
+          }}
+          onError={() => onErr(currentIdx)}
+        />
+      );
+    }
+  }
+
+  return (
+    <div style={{
+      width: 24, height: 24, borderRadius: 6,
+      background: fb.bg,
+      display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0,
+      fontSize: 13,
+    }}>
+      {fb.icon}
+    </div>
+  );
+});
+
 export const AppCard = memo(function AppCard({
   name, version, source, downloadUrl, matched, onSearch,
-  isCommunity, publisher, installPath, installDate
+  isCommunity, loading, publisher, installPath, installDate
 }: Props) {
-  const { icon: fallbackIcon, category } = categorizeApp(name);
+  const { t } = useLang();
+  const { category } = categorizeApp(name);
   const [expanded, setExpanded] = useState(false);
   const hasDetails = publisher || installPath || installDate;
 
   return (
     <div style={{
-      border: '1px solid #eee', borderRadius: 8, padding: '10px 14px', marginBottom: 6,
+      background: 'var(--md-surface)',
+      borderRadius: 12,
+      padding: '12px 16px',
+      marginBottom: 6,
+      border: '1px solid var(--md-outline-variant)',
+      transition: 'all 0.15s ease',
     }}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 10, flex: 1 }}>
-          <span style={{ fontSize: 18 }}>{fallbackIcon}</span>
-          <div style={{ flex: 1 }}>
-            <strong>{name}</strong>
-            <span style={{ marginLeft: 8, color: '#666', fontSize: 13 }}>v{version}</span>
-            {source && (
-              <span style={{ marginLeft: 6, fontSize: 11, color: '#999', background: '#f0f0f0', padding: '1px 6px', borderRadius: 3 }}>
-                {source}
-              </span>
-            )}
-            {isCommunity && (
-              <span style={{ marginLeft: 4, fontSize: 11, color: '#e65100', background: '#fff3e0', padding: '1px 6px', borderRadius: 3 }}>
-                Community
-              </span>
-            )}
-            {isCommunity === false && downloadUrl && (
-              <span style={{ marginLeft: 4, fontSize: 11, color: '#2e7d32', background: '#e8f5e9', padding: '1px 6px', borderRadius: 3 }}>
-                Official
-              </span>
-            )}
-            <span style={{ marginLeft: 6, fontSize: 11, color: '#aaa' }}>{category}</span>
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr auto', gap: 12, alignItems: 'start' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 12, minWidth: 0 }}>
+          <AppIcon name={name} />
+          <div style={{ minWidth: 0 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+              <span style={{ fontWeight: 500, fontSize: 14, color: 'var(--md-on-surface)' }}>{name}</span>
+              <span style={{ color: 'var(--md-on-surface-variant)', fontSize: 12 }}>v{version}</span>
+              {source && (
+                <span style={{
+                  fontSize: 11, color: 'var(--md-on-surface-variant)',
+                  background: 'var(--md-surface-container)', padding: '1px 8px',
+                  borderRadius: 100,
+                }}>
+                  {source}
+                </span>
+              )}
+            </div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 2 }}>
+              <span style={{ fontSize: 11, color: 'var(--md-on-surface-variant)' }}>{category}</span>
+              {isCommunity !== undefined && (
+                isCommunity ? (
+                  <span style={{
+                    fontSize: 10, fontWeight: 600, color: 'var(--md-tertiary)',
+                    background: 'var(--md-tertiary-container)',
+                    padding: '1px 8px', borderRadius: 100,
+                  }}>{t('appcard.community')}</span>
+                ) : downloadUrl ? (
+                  <span style={{
+                    fontSize: 10, fontWeight: 600,
+                    color: 'var(--md-on-primary-container)',
+                    background: 'var(--md-primary-container)',
+                    padding: '1px 8px', borderRadius: 100,
+                  }}>{t('appcard.official')}</span>
+                ) : null
+              )}
+            </div>
           </div>
         </div>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-          {downloadUrl ? (
-            <button onClick={() => openUrl(downloadUrl)} style={{ cursor: 'pointer', padding: '4px 14px' }}>
-              Open Download
+
+        <div style={{ display: 'flex', alignItems: 'center', gap: 4, flexShrink: 0 }}>
+          {loading ? (
+            <span style={{
+              width: 70, height: 28, borderRadius: 100,
+              background: 'var(--md-surface-container)',
+              display: 'inline-block',
+              animation: 'pulse 1.2s ease-in-out infinite',
+            }} />
+          ) : downloadUrl ? (
+            <button className="md-btn-sm md-btn-filled" onClick={() => openUrl(downloadUrl)}>
+              <ExternalLink size={14} />
+              {t('appcard.open')}
             </button>
           ) : matched === true ? null : onSearch ? (
-            <button onClick={onSearch} style={{ cursor: 'pointer', padding: '4px 14px' }}>
-              Search Bing
+            <button className="md-btn-sm md-btn-outlined" onClick={onSearch}>
+              <Search size={14} />
+              {t('appcard.search')}
             </button>
           ) : (
-            <span style={{ color: '#ccc', fontSize: 12 }}>---</span>
+            <span style={{ width: 80 }} />
           )}
-          {hasDetails && (
-            <button onClick={() => setExpanded(!expanded)} style={{ fontSize: 11, padding: '2px 6px', cursor: 'pointer', border: '1px solid #ddd', borderRadius: 3, background: '#fafafa' }}>
-              {expanded ? '▲' : '▼'}
+          {hasDetails ? (
+            <button onClick={() => setExpanded(!expanded)} className="md-btn-icon" style={{ border: '1px solid var(--md-outline-variant)', borderRadius: 8, width: 32, height: 32 }}>
+              {expanded ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
             </button>
+          ) : (
+            <span style={{ width: 32 }} />
           )}
         </div>
       </div>
+
+      <style>{`@keyframes pulse { 0%,100% { opacity: 0.4; } 50% { opacity: 0.8; } }`}</style>
       {expanded && hasDetails && (
-        <div style={{ marginTop: 8, paddingTop: 8, borderTop: '1px solid #eee', fontSize: 12, color: '#666', display: 'flex', gap: 16 }}>
-          {publisher && <span>Publisher: {publisher}</span>}
-          {installPath && <span>Path: {installPath}</span>}
-          {installDate && <span>Installed: {installDate}</span>}
+        <div style={{
+          marginTop: 10, paddingTop: 10, borderTop: '1px solid var(--md-outline-variant)',
+          fontSize: 12, color: 'var(--md-on-surface-variant)',
+          display: 'flex', flexWrap: 'wrap', gap: 16,
+        }}>
+          {publisher && <span>{t('appcard.publisher')}: {publisher}</span>}
+          {installPath && <span style={{ wordBreak: 'break-all' }}>{t('appcard.path')}: {installPath}</span>}
+          {installDate && <span>{t('appcard.installed')}: {installDate}</span>}
         </div>
       )}
     </div>

@@ -2,17 +2,28 @@ const { Router } = require('express');
 const db = require('../db');
 const authMiddleware = require('../middleware/auth');
 
+function sanitizeStrings(obj) {
+  if (typeof obj === 'string') return obj.replace(/\0/g, '');
+  if (Array.isArray(obj)) return obj.map(sanitizeStrings);
+  if (obj && typeof obj === 'object') {
+    const cleaned = {};
+    for (const [k, v] of Object.entries(obj)) cleaned[k] = sanitizeStrings(v);
+    return cleaned;
+  }
+  return obj;
+}
+
 const router = Router();
 router.use(authMiddleware);
 
 router.post('/', async (req, res) => {
   try {
-    const { scan_data, machine_name, scan_mode } = req.body;
+    const { scan_data, machine_name, scan_mode, scan_time } = req.body;
     if (!scan_data) return res.status(400).json({ error: 'scan_data required' });
-    const data = JSON.stringify(scan_data).replace(/\\u0000/g, '').replace(/\0/g, '');
+    const data = JSON.stringify(sanitizeStrings(scan_data));
     const r = db.query(
-      'INSERT INTO inventories (user_id, scan_data, machine_name, scan_mode, scan_time) VALUES (?, ?, ?, ?, datetime(\'now\'))',
-      [req.userId, data, machine_name || null, scan_mode || 'standard']
+      'INSERT INTO inventories (user_id, scan_data, machine_name, scan_mode, scan_time) VALUES (?, ?, ?, ?, ?)',
+      [req.userId, data, machine_name || null, scan_mode || 'standard', scan_time || new Date().toISOString()]
     );
     res.status(201).json({ id: Number(r.rows[0].id) });
   } catch (err) {

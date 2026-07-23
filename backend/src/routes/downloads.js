@@ -80,4 +80,77 @@ router.put('/links/:id/verify', async (req, res) => {
   }
 });
 
+const CHUNK_SIZE = 50;
+
+function normalizeLinkRow(row) {
+  try { row.aliases = JSON.parse(row.aliases); } catch { row.aliases = []; }
+  row.verified = !!row.verified;
+  return row;
+}
+
+// Batch match: POST /match — accepts { names: string[] }, returns matched links keyed by name
+router.post('/match', async (req, res) => {
+  try {
+    const { names } = req.body;
+    if (!Array.isArray(names) || names.length === 0) return res.status(400).json({ error: 'names array required' });
+    // Process in chunks to avoid SQL blob/limit issues
+    const result = {};
+    for (let i = 0; i < names.length; i += CHUNK_SIZE) {
+      const chunk = names.slice(i, i + CHUNK_SIZE);
+      const clauses = chunk.map(() => `(LOWER(software_name) LIKE LOWER(?) OR LOWER(aliases) LIKE LOWER(?))`);
+      const params = chunk.flatMap(n => [`%${n}%`, `%${n}%`]);
+      const rows = db.query(
+        `SELECT software_name, aliases, official_url, direct_download_url, category, verified, contributor_id
+         FROM download_links WHERE ${clauses.join(' OR ')} ORDER BY verified DESC, software_name ASC`,
+        params
+      ).rows;
+      for (const r of rows) {
+        normalizeLinkRow(r);
+        if (!result[r.software_name] || (r.verified && !result[r.software_name].verified)) {
+          result[r.software_name] = r;
+        }
+      }
+    }
+    res.json(result);
+  } catch (err) {
+    console.error('Batch match error:', err);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+// List all links with pagination + search
+router.get('/links', async (req, res) => {
+  try {
+    const page = Math.max(1, parseInt(req.query.page, 10) || 1);
+    const limit = Math.min(100, Math.max(1, parseInt(req.query.limit, 10) || 10));
+    const q = req.query.q || '';
+    const offset = (page - 1) * limit;
+
+    let where = '';
+    const params = [];
+    if (q) {
+      where = 'WHERE LOWER(software_name) LIKE LOWER(?) OR LOWER(aliases) LIKE LOWER(?)';
+      params.push(`%${q}%`, `%${q}%`);
+    }
+
+    const countR = db.query(`SELECT COUNT(*) as total FROM download_links ${where}`, params);
+    const total = countR.rows[0].total;
+
+    params.push(limit, offset);
+    const r = db.query(
+      `SELECT id, software_name, aliases, official_url, direct_download_url, category, verified, contributor_id
+       FROM download_links ${where} ORDER BY verified DESC, software_name ASC LIMIT ? OFFSET ?`, params
+    );
+    r.rows.forEach(row => {
+      row.verified = !!row.verified;
+      try { row.aliases = JSON.parse(row.aliases); } catch { row.aliases = []; }
+    });
+
+    res.json({ links: r.rows, total, page, limit, pages: Math.ceil(total / limit) });
+  } catch (err) {
+    console.error('List links error:', err);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
 module.exports = router;

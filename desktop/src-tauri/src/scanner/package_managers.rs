@@ -15,11 +15,13 @@ pub fn get_winget_apps() -> Vec<Application> {
 fn parse_winget_output(text: &str) -> Vec<Application> {
     let mut apps = Vec::new();
     for line in text.lines().skip(2) {
-        let parts: Vec<&str> = line.split_whitespace().collect();
+        if line.trim().is_empty() || line.contains("---") { continue; }
+        // Columns are separated by 2+ spaces; names may contain single spaces
+        let parts: Vec<&str> = line.split("  ").map(|s| s.trim()).filter(|s| !s.is_empty()).collect();
         if parts.len() >= 2 {
             apps.push(Application {
                 name: parts[0].to_string(),
-                version: parts.get(1).unwrap_or(&"").to_string(),
+                version: parts.get(2).or(parts.get(1)).unwrap_or(&"").to_string(),
                 publisher: None,
                 source: "winget".to_string(),
                 install_path: None,

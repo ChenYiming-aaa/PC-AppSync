@@ -4,8 +4,10 @@ import { LoginForm } from './components/LoginForm';
 import { Dashboard } from './pages/Dashboard';
 import { Inventory } from './pages/Inventory';
 import { Downloads } from './pages/Downloads';
+import { History } from './pages/History';
 import { api } from './api/client';
-import { openUrl } from './api/scanner';
+import { ToastContainer, toast } from './components/Toast';
+import { ConfirmDialogContainer } from './components/ConfirmDialog';
 import type { ScanResult, User } from './types';
 
 export default function App() {
@@ -18,8 +20,10 @@ export default function App() {
     if (token) {
       api.getProfile().then(user => {
         setUser(user);
-        return api.getLatestInventory();
-      }).then(r => setScanResult(r.scan_data)).catch(() => {
+        return api.getLatestInventory().catch(() => null);
+      }).then(r => {
+        if (r) setScanResult(r.scan_data);
+      }).catch(() => {
         localStorage.removeItem('appsync_token');
       });
     }
@@ -28,8 +32,8 @@ export default function App() {
   const handleLogin = () => {
     const token = localStorage.getItem('appsync_token');
     if (token) {
-      api.getProfile().then(setUser);
-      api.getLatestInventory().then(r => setScanResult(r.scan_data)).catch(() => {});
+      api.getProfile().then(setUser).catch(() => localStorage.removeItem('appsync_token'));
+      api.getLatestInventory().then(r => setScanResult(r.scan_data)).catch(err => console.warn('Load latest inventory failed:', err));
     }
   };
 
@@ -43,34 +47,36 @@ export default function App() {
     try {
       await api.uploadInventory(result);
       localStorage.setItem('appsync_last_sync', Date.now().toString());
-      alert('Scan result uploaded to cloud!');
+      toast('Scan result uploaded to cloud!', 'success');
     } catch (err: any) {
       localStorage.removeItem('appsync_last_sync');
-      alert('Upload failed: ' + (err?.message || 'Unknown error'));
+      toast('Upload failed: ' + (err?.message || 'Unknown error'), 'error');
     }
   };
 
-  if (!user) {
-    return <LoginForm onLogin={handleLogin} />;
-  }
-
   return (
-    <Layout currentPage={page} onNavigate={setPage} userEmail={user.email} onLogout={handleLogout}>
-      {page === 'dashboard' && (
-        <Dashboard lastScan={scanResult} onScanComplete={handleScanComplete} />
+    <>
+      <style>{`@keyframes pageIn { from { opacity: 0.3; transform: translateY(4px); } to { opacity: 1; transform: translateY(0); } }`}</style>
+      <ToastContainer />
+      <ConfirmDialogContainer />
+      {!user ? (
+        <LoginForm onLogin={handleLogin} />
+      ) : (
+        <Layout currentPage={page} onNavigate={setPage} userEmail={user.email} onLogout={handleLogout}>
+          <div key={page} style={{ animation: 'pageIn 0.2s cubic-bezier(0.2, 0, 0, 1)' }}>
+            {page === 'dashboard' && (
+              <Dashboard lastScan={scanResult} onScanComplete={handleScanComplete} />
+            )}
+            {page === 'inventory' && (
+              <Inventory scanResult={scanResult} />
+            )}
+            {page === 'downloads' && <Downloads scanResult={scanResult} />}
+            {page === 'history' && <History onScanDeleted={() => {
+              api.getLatestInventory().then(r => setScanResult(r.scan_data)).catch(() => setScanResult(null));
+            }} />}
+          </div>
+        </Layout>
       )}
-      {page === 'inventory' && (
-        <Inventory scanResult={scanResult} onSearchDownload={(name) => {
-          openUrl('https://www.bing.com/search?q=' + encodeURIComponent(name + ' 官方下载'));
-        }} />
-      )}
-      {page === 'downloads' && <Downloads scanResult={scanResult} />}
-      {page === 'admin' && user.is_admin && (
-        <div style={{ textAlign: 'center', padding: 40 }}>
-          <p>Admin panel is available as a separate web page:</p>
-          <p><a href="http://localhost:3000/admin" target="_blank" style={{ fontSize: 16, color: '#1976d2' }}>http://localhost:3000/admin</a></p>
-        </div>
-      )}
-    </Layout>
+    </>
   );
 }

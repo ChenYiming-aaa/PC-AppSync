@@ -1,23 +1,17 @@
+import { invoke } from '@tauri-apps/api/core';
+import { openUrl as pluginOpenUrl } from '@tauri-apps/plugin-opener';
 import type { ScanResult } from '../types';
 import { getAppIconUrl } from '../utils/categorize';
 
-export async function scanStandard(): Promise<ScanResult> {
-  const { invoke } = await import('@tauri-apps/api/core');
-  return invoke('scan_standard');
-}
-
-export async function scanDeep(): Promise<ScanResult> {
-  const { invoke } = await import('@tauri-apps/api/core');
-  return invoke('scan_deep');
+export async function scanSystem(): Promise<ScanResult> {
+  return invoke('scan');
 }
 
 export async function openUrl(url: string): Promise<void> {
-  const { invoke } = await import('@tauri-apps/api/core');
-  return invoke('open_url', { url });
+  return pluginOpenUrl(url);
 }
 
 export async function exportScan(data: string, filePath: string): Promise<void> {
-  const { invoke } = await import('@tauri-apps/api/core');
   return invoke('export_scan', { data, filePath });
 }
 
@@ -32,7 +26,8 @@ export function getScanExportData(result: ScanResult): { json: string; csv: stri
 }
 
 export function fetchAppIcon(_app: { name: string }): string | null {
-  return getAppIconUrl(_app.name);
+  const urls = getAppIconUrl(_app.name);
+  return urls.length > 0 ? urls[0] : null;
 }
 
 export function generateInstallScript(result: ScanResult): string {

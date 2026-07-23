@@ -1,6 +1,6 @@
 import type { DownloadLink, ScanResult, User, CompareResult } from '../types';
 
-const API_BASE = 'http://localhost:3000/api/v1';
+const API_BASE = (import.meta.env.VITE_API_BASE as string) || 'http://localhost:3000/api/v1';
 
 function getToken(): string | null {
   return localStorage.getItem('appsync_token');
@@ -87,9 +87,14 @@ export const api = {
       }),
     }),
 
+  getInventory: (id: number) => request<{ id: number; machine_name: string; scan_mode: string; scan_time: string; scan_data: ScanResult }>('/inventories/' + id),
+
   getLatestInventory: () => request<{ id: number; scan_data: ScanResult }>('/inventories/latest'),
 
-  listInventories: () => request<Array<{ id: number; machine_name: string; scan_time: string }>>('/inventories'),
+  deleteInventory: (id: number) =>
+    request<{ deleted: boolean }>('/inventories/' + id, { method: 'DELETE' }),
+
+  listInventories: () => request<Array<{ id: number; machine_name: string; scan_mode: string; scan_time: string; created_at: string }>>('/inventories'),
 
   compareInventories: (otherId: number) =>
     request<CompareResult>('/inventories/compare?other_id=' + otherId),
@@ -100,8 +105,19 @@ export const api = {
   submitDownloadLink: (data: { software_name: string; official_url: string; aliases?: string[]; category?: string }) =>
     request<{ id: number }>('/downloads/links', { method: 'POST', body: JSON.stringify(data) }),
 
+  batchMatchLinks: (names: string[]) =>
+    request<Record<string, DownloadLink>>('/downloads/match', { method: 'POST', body: JSON.stringify({ names }) }),
+
   getPendingLinks: () => request<(DownloadLink & { contributor_email?: string })[]>('/downloads/links/pending'),
 
   verifyLink: (id: number, verified: boolean) =>
     request<{ updated: boolean }>('/downloads/links/' + id + '/verify', { method: 'PUT', body: JSON.stringify({ verified }) }),
+
+  changePassword: (currentPassword: string, newPassword: string) =>
+    request<{ updated: boolean; token?: string; user?: User }>('/auth/password', { method: 'PUT', body: JSON.stringify({ currentPassword, newPassword }) }).then(r => { if (r.token) setToken(r.token); return r; }),
+
+  listDownloadLinks: (page: number, limit: number, q?: string) =>
+    request<{ links: DownloadLink[]; total: number; page: number; limit: number; pages: number }>(
+      '/downloads/links?page=' + page + '&limit=' + limit + (q ? '&q=' + encodeURIComponent(q) : '')
+    ),
 };

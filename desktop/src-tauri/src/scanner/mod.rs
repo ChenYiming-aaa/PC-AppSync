@@ -1,9 +1,10 @@
 pub mod registry;
 pub mod package_managers;
 pub mod runtimes;
-pub mod deep_scan;
 
 use serde::{Deserialize, Serialize};
+
+pub type ProgressFn = Box<dyn Fn(&str, u8) + Send + Sync>;
 
 #[derive(Debug, Serialize)]
 pub struct OsInfo {
@@ -40,21 +41,13 @@ pub struct Runtime {
 }
 
 #[derive(Debug, Serialize)]
-pub struct DeepScan {
-    pub vscode_extensions: Vec<Package>,
-    pub path_entries: Vec<String>,
-    pub wsl_distributions: Vec<Package>,
-    pub windows_features: Vec<Package>,
-}
-
-#[derive(Debug, Serialize)]
 pub struct ScanResult {
     pub version: String,
     pub machine_name: String,
     pub scan_time: String,
     pub scan_mode: String,
+    pub scan_duration_ms: u64,
     pub os: OsInfo,
     pub applications: Vec<Application>,
     pub runtimes: Vec<Runtime>,
-    pub deep_scan: Option<DeepScan>,
 }

@@ -1,16 +1,12 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo, type ComponentType } from 'react';
 import type { ScanResult } from '../types';
 import { ScanButton } from '../components/ScanButton';
 import { api } from '../api/client';
 import { exportScan, getScanExportData, generateInstallScript } from '../api/scanner';
-import { isSystemApp, findAppGroup } from '../utils/categorize';
-
-function isRealApp(name: string): boolean {
-  if (isSystemApp(name)) return false;
-  const group = findAppGroup(name);
-  if (group && group.category === '系统组件') return false;
-  return true;
-}
+import { toast } from '../components/Toast';
+import { isSystemApp } from '../utils/categorize';
+import { useLang } from '../utils/i18n';
+import { Package, Cpu, CheckCircle, HelpCircle, FileDown, FileCode } from 'lucide-react';
 
 interface Props {
   lastScan: ScanResult | null;
@@ -18,30 +14,32 @@ interface Props {
 }
 
 export function Dashboard({ lastScan, onScanComplete }: Props) {
+  const { t } = useLang();
   const [showSystem, setShowSystem] = useState(false);
   const [syncStatus, setSyncStatus] = useState<'synced' | 'local' | 'none'>(
-    (localStorage.getItem('appsync_last_sync') ? 'synced' : 'none')
+    localStorage.getItem('appsync_last_sync') ? 'synced' : 'none'
   );
   const allApps = lastScan?.applications ?? [];
-  const realApps = allApps.filter(a => isRealApp(a.name));
+  const realApps = allApps.filter(a => !isSystemApp(a.name));
   const systemCount = allApps.length - realApps.length;
   const visibleApps = showSystem ? allApps : realApps;
   const appCount = visibleApps.length;
-  const runtimeCount = lastScan?.runtimes.length ?? 0;
-  const [matchCount, setMatchCount] = useState(0);
+  const [matchedNames, setMatchedNames] = useState<Set<string>>(new Set());
 
   useEffect(() => {
-    if (!lastScan) { setMatchCount(0); return; }
+    if (!lastScan || allApps.length === 0) { setMatchedNames(new Set()); return; }
     let cancelled = false;
-    Promise.allSettled(
-      visibleApps.map(app => api.searchDownloadLinks(app.name))
-    ).then(results => {
-      if (!cancelled) {
-        setMatchCount(results.filter(r => r.status === 'fulfilled' && r.value.length > 0).length);
-      }
-    });
+    const names = [...new Set(allApps.map(a => a.name))];
+    api.batchMatchLinks(names).then(result => {
+      if (!cancelled) setMatchedNames(new Set(Object.keys(result)));
+    }).catch(err => console.warn('Match links failed:', err));
     return () => { cancelled = true; };
-  }, [lastScan, showSystem]);
+  }, [lastScan]);
+
+  const matchCount = useMemo(() =>
+    visibleApps.filter(a => matchedNames.has(a.name)).length,
+    [visibleApps, matchedNames]
+  );
 
   useEffect(() => {
     if (!lastScan) { setSyncStatus('none'); return; }
@@ -54,9 +52,9 @@ export function Dashboard({ lastScan, onScanComplete }: Props) {
       const filePath = await save({ defaultPath: defaultName, filters: [{ name: 'All Files', extensions: ['*'] }] });
       if (!filePath) return;
       await exportScan(content, filePath);
-      alert('Saved to ' + filePath);
+      toast(t('toast.saved') + ' ' + filePath, 'success');
     } catch (err: any) {
-      alert('Dialog error: ' + (err?.message || ''));
+      toast(t('dashboard.dialogError') + ': ' + (err?.message || ''), 'error');
     }
   };
 
@@ -68,57 +66,95 @@ export function Dashboard({ lastScan, onScanComplete }: Props) {
 
   return (
     <div>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-        <h2>Overview</h2>
-        <div style={{ display: 'flex', gap: 6 }}>
-          {lastScan && <button onClick={() => {
-            const script = generateInstallScript(lastScan);
-            if (script.includes('No package manager data')) { alert('No Python or Node.js packages found in scan data.'); return; }
-            saveFile(script, 'restore-packages.ps1');
-          }} style={{ fontSize: 12 }}>Script</button>}
-          {lastScan && <button onClick={handleExport} style={{ fontSize: 12 }}>Export</button>}
-        </div>
-      </div>
-      {lastScan ? (
-        <>
-          <label style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 12, fontSize: 13, cursor: 'pointer' }}>
-            <input type="checkbox" checked={showSystem} onChange={e => setShowSystem(e.target.checked)} />
-            Show system components ({systemCount} hidden)
-          </label>
-          <div style={{ display: 'flex', gap: 12, marginBottom: 20 }}>
-            <StatCard value={appCount} label="Applications" />
-            <StatCard value={runtimeCount} label="Runtimes" />
-            <StatCard value={matchCount} label="Matched" color="#2e7d32" />
-            <StatCard value={appCount - matchCount} label="Unmatched" color="#c62828" />
-          </div>
-          <p style={{ textAlign: 'center', color: '#999', fontSize: 12, marginTop: -12 }}>
-            Machine: {lastScan.machine_name} | Scanned: {new Date(lastScan.scan_time).toLocaleString()} | Mode: {lastScan.scan_mode}
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 28 }}>
+        <div>
+          <h2 style={{ color: 'var(--md-on-surface)', marginBottom: 4 }}>{t('dashboard.overview')}</h2>
+          <p style={{ color: 'var(--md-on-surface-variant)', fontSize: 14, margin: 0 }}>
+            {lastScan
+              ? `${lastScan.machine_name} · ${(lastScan.scan_duration_ms ?? 0) > 0 ? (lastScan.scan_duration_ms! / 1000).toFixed(1) + 's · ' : ''}${lastScan.scan_mode} ${t('dashboard.mode')}`
+              : t('dashboard.runScan')}
           </p>
-        </>
-      ) : (
-        <p style={{ color: '#999' }}>No scan data yet. Run a scan to get started.</p>
-      )}
-        <ScanButton onScanComplete={onScanComplete} />
-        <div style={{ textAlign: 'center', marginTop: 12, fontSize: 12 }}>
-          {syncStatus === 'synced' ? (
-            <span style={{ color: '#2e7d32' }}>☁️ Synced to cloud</span>
-          ) : syncStatus === 'local' ? (
-            <span style={{ color: '#f57c00' }}> Local only</span>
-          ) : (
-            <span style={{ color: '#999' }}> Not uploaded</span>
-          )}
         </div>
+        {lastScan && (
+          <div style={{ display: 'flex', gap: 8 }}>
+            <button className="md-btn-sm md-btn-tonal" onClick={() => {
+              const script = generateInstallScript(lastScan);
+              if (script.includes('No package manager data')) { toast(t('dashboard.noPackages'), 'warning'); return; }
+              saveFile(script, 'restore-packages.ps1');
+            }}>
+              <FileCode size={16} /> {t('dashboard.script')}
+            </button>
+            <button className="md-btn-sm md-btn-tonal" onClick={handleExport}>
+              <FileDown size={16} /> {t('dashboard.export')}
+            </button>
+          </div>
+        )}
+      </div>
+
+      {lastScan && (
+        <>
+          <div className="stat-grid" style={{
+            display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))',
+            gap: 16, marginBottom: 28,
+          }}>
+            <StatCard icon={Package} value={appCount} label={t('dashboard.applications')} color="var(--md-primary)" />
+            <StatCard icon={Cpu} value={lastScan?.scan_duration_ms ? (lastScan.scan_duration_ms / 1000).toFixed(1) + 's' : '-'} label={t('dashboard.scanTime')} color="var(--md-tertiary)" />
+            <StatCard icon={CheckCircle} value={matchCount} label={t('dashboard.matched')} color="var(--md-primary)" />
+            <StatCard icon={HelpCircle} value={appCount - matchCount} label={t('dashboard.unmatched')} color="var(--md-error)" />
+          </div>
+
+          <div style={{ display: 'flex', alignItems: 'center', gap: 16, marginBottom: 28, flexWrap: 'wrap' }}>
+            <label style={{
+              display: 'inline-flex', alignItems: 'center', gap: 10,
+              fontSize: 13, cursor: 'pointer', userSelect: 'none',
+              padding: '8px 16px', borderRadius: 100,
+              background: 'var(--md-surface-container)',
+            }}>
+              <input type="checkbox" checked={showSystem} onChange={e => setShowSystem(e.target.checked)}
+                style={{ accentColor: 'var(--md-primary)' }} />
+              {t('dashboard.showSystem')}
+              <span style={{ color: 'var(--md-on-surface-variant)', fontSize: 12 }}>({systemCount} {t('dashboard.hidden')})</span>
+            </label>
+
+            <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+              <span style={{
+                width: 8, height: 8, borderRadius: '50%',
+                background: syncStatus === 'synced' ? 'var(--md-primary)' : syncStatus === 'local' ? '#B38F00' : 'var(--md-on-surface-variant)',
+                display: 'inline-block',
+              }} />
+              <span style={{ fontSize: 12, color: 'var(--md-on-surface-variant)' }}>
+                {syncStatus === 'synced' ? t('dashboard.synced') : syncStatus === 'local' ? t('dashboard.local') : t('dashboard.notUploaded')}
+              </span>
+            </div>
+          </div>
+        </>
+      )}
+
+      <ScanButton onScanComplete={onScanComplete} />
     </div>
   );
 }
 
-function StatCard({ value, label, color }: { value: number; label: string; color?: string }) {
+function StatCard({ icon: Icon, value, label, color }: { icon: ComponentType<{ size: number; color?: string }>; value: number | string; label: string; color: string }) {
   return (
     <div style={{
-      border: '1px solid #ddd', borderRadius: 8, padding: '14px 20px', flex: 1, textAlign: 'center'
+      background: 'var(--md-surface)',
+      borderRadius: 16,
+      padding: '20px',
+      border: '1px solid var(--md-outline-variant)',
+      boxShadow: 'var(--md-elevation-1)',
     }}>
-      <div style={{ fontSize: 28, fontWeight: 'bold', color: color || '#333' }}>{value}</div>
-      <div style={{ color: '#666', fontSize: 13 }}>{label}</div>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 12 }}>
+        <div style={{
+          width: 40, height: 40, borderRadius: 12,
+          background: 'var(--md-primary-container)',
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
+        }}>
+          <Icon size={20} color={color} />
+        </div>
+      </div>
+      <div style={{ fontSize: 32, fontWeight: 600, color, lineHeight: 1.1 }}>{value}</div>
+      <div style={{ color: 'var(--md-on-surface-variant)', fontSize: 13, marginTop: 4 }}>{label}</div>
     </div>
   );
 }
