@@ -15,7 +15,14 @@
     <img src="https://img.shields.io/github/license/ChenYiming-aaa/PC-AppSync" alt="License">
     <img src="https://img.shields.io/github/last-commit/ChenYiming-aaa/PC-AppSync" alt="Last Commit">
     <img src="https://img.shields.io/github/languages/code-size/ChenYiming-aaa/PC-AppSync" alt="Code Size">
+    <img src="https://img.shields.io/github/v/release/ChenYiming-aaa/PC-AppSync?display_name=tag" alt="Latest Release">
     <img src="https://img.shields.io/badge/PRs-welcome-brightgreen" alt="PRs Welcome">
+  </p>
+
+  <p>
+    <a href="https://github.com/ChenYiming-aaa/PC-AppSync/releases/latest">
+      <img src="https://img.shields.io/badge/Download-Installer-blue?style=for-the-badge&logo=windows" alt="Download">
+    </a>
   </p>
 </div>
 
@@ -59,13 +66,23 @@ AppSync 是一款 Windows 桌面工具，旨在解决换电脑时「我原来装
 
 ## 安装
 
-### 环境要求
+### 快速安装（推荐）
+
+1. 从 [GitHub Releases](https://github.com/ChenYiming-aaa/PC-AppSync/releases/latest) 下载最新版安装包
+2. 运行 `AppSync_x64_en-US.msi` 完成安装
+3. 打开 AppSync，注册账号即可使用
+
+> 桌面端默认连接云端服务器，**无需本地启动后端**，开箱即用。
+
+### 从源码构建
+
+#### 环境要求
 
 - **Node.js** 20+
 - **Rust** 1.70+
 - **Windows** 10/11（扫描引擎仅支持 Windows）
 
-### 后端
+#### 后端
 
 ```bash
 cd backend
@@ -76,7 +93,7 @@ npm run seed-admin      # 创建管理员用户
 npm start               # 启动在 http://localhost:3000
 ```
 
-### 桌面客户端
+#### 桌面客户端
 
 ```bash
 cd desktop
@@ -84,13 +101,14 @@ npm install
 npm run tauri dev       # 开发模式（Vite + Tauri 热重载）
 ```
 
-### 生产构建
+#### 生产构建
 
 ```bash
-npm run tauri build     # 生成 MSI/NSIS 安装包
+cd desktop
+VITE_API_BASE=https://你的后端地址/api/v1 npm run tauri build
 ```
 
-### 运行测试
+#### 运行测试
 
 ```bash
 .\run-tests.bat         # 运行后端、前端和 Rust 测试
@@ -98,16 +116,20 @@ npm run tauri build     # 生成 MSI/NSIS 安装包
 
 ## 使用指南
 
-1. **启动后端** — 在 `backend/` 目录下运行 `npm start`
-2. **启动桌面应用** — 在 `desktop/` 目录下运行 `npm run tauri dev`
+### 桌面端
+
+1. **下载安装** — 从 [GitHub Releases](https://github.com/ChenYiming-aaa/PC-AppSync/releases/latest) 下载 MSI 安装包并安装
+2. **注册登录** — 打开 AppSync，注册账号并登录
 3. **扫描电脑** — 点击 **扫描** 按钮，盘点所有已安装的软件、运行时和包
-4. **同步到云端** — 登录后将扫描结果上传到后端
-5. **跨设备对比** — 在新电脑上再次扫描，从历史记录中选择旧电脑的扫描结果进行对比
-6. **恢复软件** — 使用生成的安装脚本或下载链接重新安装缺失的软件
+4. **同步到云端** — 登录后将扫描结果自动上传到服务器
+5. **跨设备对比** — 在新电脑上登录同一账号，从历史记录中选择旧电脑的扫描结果进行对比
+6. **恢复软件** — 使用下载链接或生成的安装脚本重新安装缺失的软件
+
+> 所有数据存储在云端服务器，换电脑后只需登录同一账号即可查看历史清单。
 
 ### API 接口
 
-后端在 `http://localhost:3000/api/v1` 提供 REST API：
+云端后端地址：`https://pc-appsync-production.up.railway.app/api/v1`
 
 | 接口 | 方法 | 说明 |
 |---|---|---|
@@ -135,7 +157,9 @@ npm run tauri build     # 生成 MSI/NSIS 安装包
 
 | 变量 | 说明 |
 |---|---|
-| `VITE_API_BASE` | 后端 API 地址（默认：`http://localhost:3000/api/v1`） |
+| `VITE_API_BASE` | 后端 API 地址（默认连接云端服务器） |
+
+> v0.1.1 起默认连接云端服务器，普通用户无需配置。开发者如需连接本地后端，构建时设置 `VITE_API_BASE=http://localhost:3000/api/v1`。
 
 ## 系统架构
 

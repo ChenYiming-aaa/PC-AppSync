@@ -15,7 +15,14 @@
     <img src="https://img.shields.io/github/license/ChenYiming-aaa/PC-AppSync" alt="License">
     <img src="https://img.shields.io/github/last-commit/ChenYiming-aaa/PC-AppSync" alt="Last Commit">
     <img src="https://img.shields.io/github/languages/code-size/ChenYiming-aaa/PC-AppSync" alt="Code Size">
+    <img src="https://img.shields.io/github/v/release/ChenYiming-aaa/PC-AppSync?display_name=tag" alt="Latest Release">
     <img src="https://img.shields.io/badge/PRs-welcome-brightgreen" alt="PRs Welcome">
+  </p>
+
+  <p>
+    <a href="https://github.com/ChenYiming-aaa/PC-AppSync/releases/latest">
+      <img src="https://img.shields.io/badge/Download-Installer-blue?style=for-the-badge&logo=windows" alt="Download">
+    </a>
   </p>
 </div>
 
@@ -59,13 +66,23 @@ The built-in download link library covers 650+ applications across 13 categories
 
 ## Install
 
-### Prerequisites
+### Quick Install (Recommended)
+
+1. Download the latest installer from [GitHub Releases](https://github.com/ChenYiming-aaa/PC-AppSync/releases/latest)
+2. Run `AppSync_x64_en-US.msi` to install
+3. Launch AppSync, create an account, and you're ready to go
+
+> The desktop app connects to the cloud server by default. **No local backend setup required.**
+
+### Build from Source
+
+#### Prerequisites
 
 - **Node.js** 20+
 - **Rust** 1.70+
 - **Windows** 10/11 (scanning engine is Windows-specific)
 
-### Backend
+#### Backend
 
 ```bash
 cd backend
@@ -76,7 +93,7 @@ npm run seed-admin      # Create an admin user
 npm start               # Starts on http://localhost:3000
 ```
 
-### Desktop Client
+#### Desktop Client
 
 ```bash
 cd desktop
@@ -84,13 +101,14 @@ npm install
 npm run tauri dev       # Development mode (Vite + Tauri hot-reload)
 ```
 
-### Build for Production
+#### Build for Production
 
 ```bash
-npm run tauri build     # Generates MSI/NSIS installer
+cd desktop
+VITE_API_BASE=https://your-backend-url.com/api/v1 npm run tauri build
 ```
 
-### Run Tests
+#### Run Tests
 
 ```bash
 .\run-tests.bat         # Runs backend, frontend, and Rust tests
@@ -98,16 +116,20 @@ npm run tauri build     # Generates MSI/NSIS installer
 
 ## Usage
 
-1. **Start the backend** — Run `npm start` in the `backend/` directory
-2. **Launch the desktop app** — Run `npm run tauri dev` in the `desktop/` directory
-3. **Scan your PC** — Click the **Scan** button to inventory all installed software, runtimes, and packages
-4. **Sync to cloud** — Log in to upload scan results to the backend
-5. **Compare devices** — On your new PC, scan again and select the old PC's scan from history to see what's missing
-6. **Restore** — Use the generated install scripts or download links to reinstall missing software
+### Desktop App
 
-### CLI (Backend API)
+1. **Download & Install** — Get the MSI from [GitHub Releases](https://github.com/ChenYiming-aaa/PC-AppSync/releases/latest)
+2. **Create Account** — Launch AppSync, register, and log in
+3. **Scan your PC** — Click **Scan** to inventory all installed software, runtimes, and packages
+4. **Sync to Cloud** — Scan results are uploaded automatically after login
+5. **Compare Devices** — On your new PC, log into the same account and compare with your old machine's inventory
+6. **Restore** — Use download links or generated install scripts to reinstall missing software
 
-The backend exposes a REST API on `http://localhost:3000/api/v1`:
+> All data is stored on the cloud server. Just log in on any device to access your history.
+
+### Backend API
+
+The cloud API is available at `https://pc-appsync-production.up.railway.app/api/v1`:
 
 | Endpoint | Method | Description |
 |---|---|---|
@@ -135,7 +157,9 @@ The backend exposes a REST API on `http://localhost:3000/api/v1`:
 
 | Variable | Description |
 |---|---|
-| `VITE_API_BASE` | Backend API URL (default: `http://localhost:3000/api/v1`) |
+| `VITE_API_BASE` | Backend API URL (defaults to cloud server) |
+
+> Since v0.1.1, the desktop app connects to the cloud server by default. No configuration needed for end users. Developers can set `VITE_API_BASE=http://localhost:3000/api/v1` to connect to a local backend.
 
 ## Architecture
 
