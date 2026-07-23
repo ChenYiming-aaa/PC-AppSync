@@ -322,13 +322,13 @@ header button:hover { background: var(--md-surface-container); }
     </h1>
     <div class="user-info">
       <span id="userEmail"></span>
-      <button onclick="logout()">Sign out</button>
+      <button id="signOutBtn">Sign out</button>
     </div>
   </header>
 
   <div class="tabs">
-    <button class="active" onclick="switchTab('review')" id="tabReview">Pending Review</button>
-    <button onclick="switchTab('users')" id="tabUsers">User Management</button>
+    <button class="active" id="tabReview">Pending Review</button>
+    <button id="tabUsers">User Management</button>
   </div>
 
   <div id="panelReview"></div>
@@ -409,6 +409,9 @@ async function req(path, opts) {
 }
 
 document.getElementById('loginBtn').addEventListener('click', login);
+document.getElementById('signOutBtn').addEventListener('click', logout);
+document.getElementById('tabReview').addEventListener('click', function() { switchTab('review'); });
+document.getElementById('tabUsers').addEventListener('click', function() { switchTab('users'); });
 document.addEventListener('keydown', function(e) {
   if (e.key === 'Enter' && document.getElementById('loginWrap').style.display !== 'none') login();
 });
