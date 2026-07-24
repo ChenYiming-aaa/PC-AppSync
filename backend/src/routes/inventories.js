@@ -22,7 +22,7 @@ router.post('/', async (req, res) => {
     if (!scan_data) return res.status(400).json({ error: 'scan_data required' });
     const data = JSON.stringify(sanitizeStrings(scan_data));
     const r = db.query(
-      'INSERT INTO inventories (user_id, scan_data, machine_name, scan_mode, scan_time) VALUES (?, ?, ?, ?, ?)',
+      'INSERT INTO inventories (user_id, scan_data, machine_name, scan_mode, scan_time) VALUES (?, ?, ?, ?, ?) RETURNING id',
       [req.userId, data, machine_name || null, scan_mode || 'standard', scan_time || new Date().toISOString()]
     );
     res.status(201).json({ id: Number(r.rows[0].id) });

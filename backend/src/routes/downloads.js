@@ -38,7 +38,7 @@ router.post('/links', async (req, res) => {
     if (!software_name || !official_url) return res.status(400).json({ error: 'software_name and official_url required' });
     if (!isValidUrl(official_url)) return res.status(400).json({ error: 'official_url must be a valid http/https URL' });
     const r = db.query(
-      'INSERT INTO download_links (software_name, aliases, official_url, direct_download_url, category, contributor_id) VALUES (?, ?, ?, ?, ?, ?)',
+      'INSERT INTO download_links (software_name, aliases, official_url, direct_download_url, category, contributor_id) VALUES (?, ?, ?, ?, ?, ?) RETURNING id',
       [software_name, JSON.stringify(aliases || []), official_url, direct_download_url || null, category || null, req.userId]
     );
     res.status(201).json({ id: Number(r.rows[0].id), message: 'Submitted for review' });
