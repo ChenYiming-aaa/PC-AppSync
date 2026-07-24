@@ -6,6 +6,7 @@ import { exportScan, getScanExportData, generateInstallScript } from '../api/sca
 import { toast } from '../components/Toast';
 import { isSystemApp } from '../utils/categorize';
 import { useLang } from '../utils/i18n';
+import { UserGuide } from '../components/UserGuide';
 import { Package, Cpu, CheckCircle, HelpCircle, FileDown, FileCode } from 'lucide-react';
 
 interface Props {
@@ -15,6 +16,7 @@ interface Props {
 
 export function Dashboard({ lastScan, onScanComplete }: Props) {
   const { t } = useLang();
+  const [showGuide, setShowGuide] = useState(false);
   const [showSystem, setShowSystem] = useState(false);
   const [syncStatus, setSyncStatus] = useState<'synced' | 'local' | 'none'>(
     localStorage.getItem('appsync_last_sync') ? 'synced' : 'none'
@@ -68,7 +70,16 @@ export function Dashboard({ lastScan, onScanComplete }: Props) {
     <div>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 28 }}>
         <div>
-          <h2 style={{ color: 'var(--md-on-surface)', marginBottom: 4 }}>{t('dashboard.overview')}</h2>
+          <h2 style={{ color: 'var(--md-on-surface)', marginBottom: 4, display: 'flex', alignItems: 'center', gap: 8 }}>
+            {t('dashboard.overview')}
+            <div onClick={() => setShowGuide(true)}
+              style={{ display: 'inline-flex', alignItems: 'center', gap: 4, cursor: 'pointer', padding: '3px 10px', borderRadius: 100, border: '1px solid var(--md-outline-variant)', color: 'var(--md-on-surface-variant)', fontSize: 12, transition: 'all 0.15s ease' }}
+              onMouseEnter={e => { e.currentTarget.style.background = 'var(--md-surface-container)'; e.currentTarget.style.borderColor = 'var(--md-primary)'; }}
+              onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.borderColor = 'var(--md-outline-variant)'; }}>
+              <span style={{ fontWeight: 600 }}>?</span>
+              <span>使用说明</span>
+            </div>
+          </h2>
           <p style={{ color: 'var(--md-on-surface-variant)', fontSize: 14, margin: 0 }}>
             {lastScan
               ? `${lastScan.machine_name} · ${(lastScan.scan_duration_ms ?? 0) > 0 ? (lastScan.scan_duration_ms! / 1000).toFixed(1) + 's · ' : ''}${lastScan.scan_mode} ${t('dashboard.mode')}`
@@ -131,6 +142,7 @@ export function Dashboard({ lastScan, onScanComplete }: Props) {
       )}
 
       <ScanButton onScanComplete={onScanComplete} />
+      {showGuide && <UserGuide onClose={() => setShowGuide(false)} />}
     </div>
   );
 }
