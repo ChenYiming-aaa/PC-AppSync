@@ -202,25 +202,32 @@ The cloud API is available at `https://pc-appsync-production.up.railway.app/api/
 
 ## Screenshots
 
-Login Page
+**Login Page**
+
 ![alt text](image.png)
 
-Main Interface
+**Main Interface**
+
 ![alt text](image-1.png)
 
-Scanning in Progress
+**Scanning in Progress**
+
 ![alt text](image-2.png)
 
-Software Inventory
+**Software Inventory**
+
 ![alt text](image-3.png)
 
-Download Center (with cross-device comparison)
+**Download Center (cross-device comparison)**
+
 ![alt text](image-4.png)
 
-Scan History
+**Scan History**
+
 ![alt text](image-5.png)
 
-Theme Toggle
+**Theme Toggle**
+
 ![alt text](image-6.png)
 
 ## Contributing
