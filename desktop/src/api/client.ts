@@ -39,7 +39,12 @@ async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
   };
   if (token) headers['Authorization'] = 'Bearer ' + token;
 
-  let res = await fetch(API_BASE + path, { ...options, headers });
+  let res;
+  try {
+    res = await fetch(API_BASE + path, { ...options, headers });
+  } catch (err: any) {
+    throw new Error('无法连接到服务器，请检查网络或防火墙设置 (' + (err.message || 'unknown') + ')');
+  }
   
   // Auto-refresh token on 401 (all concurrent callers share the same refresh)
   if (res.status === 401) {
@@ -48,7 +53,11 @@ async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
     refreshPromise = null;
     if (refreshed) {
       headers['Authorization'] = 'Bearer ' + getToken();
-      res = await fetch(API_BASE + path, { ...options, headers });
+      try {
+        res = await fetch(API_BASE + path, { ...options, headers });
+      } catch (err: any) {
+        throw new Error('无法连接到服务器，请检查网络或防火墙设置 (' + (err.message || 'unknown') + ')');
+      }
     }
   }
   

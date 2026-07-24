@@ -14,11 +14,12 @@
       {
         "title": "AppSync",
         "width": 800,
-        "height": 600
+        "height": 600,
+        "devtools": true
       }
     ],
     "security": {
-      "csp": "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: https://cdn.jsdelivr.net https://unpkg.com; connect-src 'self' http://localhost:3000 https://pc-appsync-production.up.railway.app"
+      "csp": "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: https://cdn.jsdelivr.net https://unpkg.com; connect-src 'self' http://localhost:3000 https://pc-appsync-production.up.railway.app https:"
     }
   },
   "bundle": {
