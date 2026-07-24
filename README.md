@@ -216,25 +216,32 @@ VITE_API_BASE=https://你的后端地址/api/v1 npm run tauri build
 
 ## 截图
 
-登录界面
+### 登录界面
+
 ![alt text](image.png)
 
-主界面
+### 主界面
+
 ![alt text](image-1.png)
 
-扫描过程
+### 扫描过程
+
 ![alt text](image-2.png)
 
-软件清单
+### 软件清单
+
 ![alt text](image-3.png)
 
-下载中心（支持跨设备对比）
+### 下载中心（支持跨设备对比）
+
 ![alt text](image-4.png)
 
-历史记录查看
+### 历史记录查看
+
 ![alt text](image-5.png)
 
-模式调节
+### 模式调节
+
 ![alt text](image-6.png)
 
 ## 贡献指南
